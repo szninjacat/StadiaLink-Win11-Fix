@@ -2,7 +2,7 @@
 
 - **基线提交**：`bea80f3` — *Correct release version to 1.0.2*
 - **比较范围**：`app/`、`driver/`、`tests/`
-- **机器可读补丁**：[../patches/v1.0.2-hotfix.patch](../patches/v1.0.2-hotfix.patch)，15 个文本文件、约 180 KB，由真实 `git diff --cached --binary` 导出（含新增文件），无二进制块
+- **机器可读补丁**：[../patches/v1.0.2-hotfix.patch](../patches/v1.0.2-hotfix.patch)，17 个文本文件、约 207 KB，由真实 `git diff --cached --binary` 导出（含新增文件），无二进制块
 - **版本说明**：[../RELEASE_NOTES.md](../RELEASE_NOTES.md)
 
 本目录中的 `app/`、`driver/`、`tests/` **已经是改动后的源码**，无需再应用补丁。补丁用于代码审查，或把改动移植到一份干净的 1.0.2 checkout：
@@ -30,12 +30,14 @@ git apply patches/v1.0.2-hotfix.patch
 | `tests/run.ps1` | 同上 |
 | `app/package.ps1` | 两处暂存目录清理受 `STADIALINK_SKIP_STAGE_CLEANUP=1` 控制；默认行为不变 |
 
-## 二、新增文件（2 个，已包含在补丁中）
+## 二、新增文件（4 个，已包含在补丁中）
 
 | 文件 | 用途 |
 | --- | --- |
 | `tests/build-zh-locale.py` | 幂等生成 5 列翻译表（先移除已存在的 zh 列再重建），是 `locales.tsv` 的可复现来源 |
 | `tests/probe-private-gatt.py` | 只读探测本机私有 WinRT 激活工厂与接口 IID，输出标准 8-4-4-4-12 GUID 并区分已验证 IID / 共享 statics / 未验证候选；不会连接手柄、不会写 GATT 特征 |
+| `driver/iid-policy.h` | 纯策略头：候选 IID 筛选、已知 IID 排除、黑名单去重滚动与诊断位编码；驱动与单元测试共用 |
+| `tests/iid-policy-tests.cpp` | 26 项策略单测（筛选、变体位、已知排除、黑名单、诊断编码），已接入 `tests/run.ps1` |
 
 此外 `app/StadiaLink.ico` 是 `app/create-icon.ps1` 生成、被 `app/build.ps1` 引用的构建资源，随本仓库提供（新 `.gitignore` 不再忽略 `*.ico`）。它是二进制资源，**不放入文本补丁**。
 
@@ -47,7 +49,7 @@ git apply patches/v1.0.2-hotfix.patch
 - 默认 `README.md` 改为简体中文（与 `README.zh-CN.md` 一致）；原西班牙语版另存为 `README.es.md`；6 份 README 的语言导航同步更新；仓库 About 简介改为简体中文
 - `CHANGELOG.md` 新增 `Unreleased — 1.0.2 hotfix (2026-11-09)` 条目（含关闭按钮修复），历史条目不变；`RELEASE_NOTES.md` 增加「关闭按钮行为」小节并更新产物哈希
 - 新增 `RELEASE_NOTES.md`（中文版本说明）、本文件、`patches/`、`dist/`
-- 新增 `docs/COMPATIBILITY.md`：兼容性矩阵（含 Windows 10 未验证说明）、失败关闭策略、诊断字节表与新增 IID 的实机 ABI 验证流程；6 语 README 的兼容性段落与 `cd StadiaLink-Win11-Fix` 构建命令同步更新
+- 新增 `docs/COMPATIBILITY.md`：兼容性矩阵（含 Windows 10 未验证说明）、分层自动适配与熔断机制、诊断字节表、缓存/黑名单重置与新增 IID 的实机 ABI 验证流程；6 语 README 的兼容性段落与 `cd StadiaLink-Win11-Fix` 构建命令同步更新
 - `CHANGELOG.md` 追加「代码审查后加固」条目；`RELEASE_NOTES.md` 追加第 9 节并修订「已知限制」第 1 条
 
 ## 四、未改动的部分
@@ -70,7 +72,7 @@ USB 震动路径、蓝牙输入与 XInput 翻译、配置模型与持久化、�
 | `release/SHA256.txt`、`release/SHA256SUMS.txt` | 由 `dist/` 下重新生成的两份清单替代（只覆盖实际分发的文件） |
 | `driver/out/` 中间产物、`*.obj`、`*.pdb`、`*.log`、截图、DriverStore 备份 | 构建中间物与本机回滚材料 |
 
-`dist/driver/` 中的 `winstadia.dll` / `winstadia.inf` 是**唯一**保留的 `driver/out/pkg` 产物（2026-11-10 重新编译，含审查加固，双 IID 未变；`DriverVer=11/10/2026,18.46.2.678`）。
+`dist/driver/` 中的 `winstadia.dll` / `winstadia.inf` 是**唯一**保留的 `driver/out/pkg` 产物（2026-11-10 第二次重新编译，含审查加固与分层自动适配，双 IID 未变；`DriverVer=11/10/2026,19.30.26.699`）。
 
 ## 六、代码审查后的加固（2026-11-10）
 
@@ -88,3 +90,20 @@ USB 震动路径、蓝牙输入与 XInput 翻译、配置模型与持久化、�
 **未验证版本**：Windows 10 22H2 / 11 22H2 / 11 24H2 均无实机数据，不进入 `DeviceIids[]`。本次没有 Windows 10 的 IID 可补，下一步应先做只读探测，而不是猜一个 IID 写进白名单。
 
 **行为影响**：22631 / 26200 上仍按原来两个已验证 IID 打开，震动路径完全不变；只有未知 build 从「可能猜错并调用」变为「明确停用并报告」。
+
+## 七、同日第二次更新：分层自动适配（2026-11-10）
+
+| 文件 | 改动 |
+| --- | --- |
+| `driver/private-gatt.cpp` | 拆出 `CreateDeviceObject` / `TryOpenWithDevice` / `GuardedTryOpen` / `AutoAdapt`；已验证 IID 路径保持原样，未知 build 才进入候选筛选 → vtable 静态校验 → 完整链路验证 → SEH 隔离 → 注册表缓存 / 黑名单 / 崩溃熔断 |
+| `driver/iid-policy.h`（新增） | 纯策略头：候选筛选、已知 IID 排除、黑名单去重滚动、诊断位编码，供驱动与单元测试共用 |
+| `driver/private-gatt.h` | 新增阶段 `12`；`IidIndex` 增加 `0x40` 缓存 / `0x80+i` 本次验证编码；`CandidateCount` 增加标志位说明 |
+| `driver/build.ps1` | 默认开启自动适配，`STADIALINK_AUTO_IID=0` 构建严格版；链接新增 `advapi32.lib` |
+| `driver/status.ps1` | 阶段 `11`/`12` 文案、`IidIndex` 解码、第 62 字节标志位与熔断提示 |
+| `tests/iid-policy-tests.cpp`（新增） | 26 项策略单测；`tests/run.ps1` 接入编译与运行 |
+| `tests/probe-private-gatt.py` | 说明改为「候选会被自动验证并缓存」，与驱动行为一致 |
+| 6 语 README + 模板 | 中文「蓝牙震动兼容性」章节改为自动适配与容错；各语言兼容性段落补充自动适配边界 |
+| `docs/COMPATIBILITY.md` | 重写：矩阵、五层验证、降级与诚实边界、诊断字节、手动补 IID、缓存/黑名单重置 |
+| `RELEASE_NOTES.md` / `CHANGELOG.md` / 本节 | 追加第 10 节 / 新条目 / 本节 |
+
+补丁现为 **17 个文本文件、约 207 KB**（13 个修改 + 4 个新增）。`dist/` 已全部重编译，哈希清单同步更新。

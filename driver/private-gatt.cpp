@@ -1,18 +1,24 @@
 // Native Stadia rumble transport. Private ABI recovered from the installed
 // Microsoft.Bluetooth.Service and HidOverGatt public symbols (Windows 26200).
 //
-// The private GattClientDevice interface IID is not stable across Windows
-// builds. Build 22631 (23H2) ships 0799A6A6-E942-5218-8A0E-7C9B996E4158
-// where 26200 ships 6BBEDE1F-797F-5C17-8AC7-3F342037CB59. Asking for the
-// 26200 IID on 22631 fails with E_NOINTERFACE (0x80004002), which is the
-// "no vibration over Bluetooth" symptom. The statics IID above it is shared
-// by both builds, so only the device facet has to be selected per build.
-// Known IIDs are tried first. For any other build the driver enumerates the
-// object's private interfaces, reports them for diagnosis, and fails closed:
-// a matching IID does not prove that vtable slots 11/14 still mean what they
-// used to. See docs/COMPATIBILITY.md for the ABI validation procedure.
+// The private GattClientDevice device IID is not stable across Windows builds:
+// 22631 uses 0799A6A6-..., 26200 uses 6BBEDE1F-..., while the statics IID is
+// shared. Asking for the wrong device IID fails with E_NOINTERFACE, which is
+// the "no vibration over Bluetooth" symptom.
+//
+// Resolution order on every build:
+//   1. the two hardware-verified IIDs (unchanged behaviour on 22631 / 26200);
+//   2. an IID that already passed full validation on an earlier boot (cached);
+//   3. runtime candidates from IInspectable::GetIids, each of which must pass
+//      vtable sanity checks AND the complete HID GATT chain before it is used.
+//
+// Blindly calling slots 11/14 on a guessed interface is unsafe. Unknown facets
+// are therefore only used inside an SEH guard, and a persistent attempt marker
+// turns a host crash into a blacklist entry on the next boot. See
+// docs/COMPATIBILITY.md for the whole policy and the manual IID procedure.
 #define WIN32_LEAN_AND_MEAN
 #include "private-gatt.h"
+#include "iid-policy.h"
 #include <roapi.h>
 #include <winstring.h>
 #include <inspectable.h>
@@ -25,11 +31,15 @@
 #include <new>
 #include <memory>
 
-// Safety switch. Unverified IIDs are never used in a normal build. Define this
-// to 1 only for a throwaway test build on a new Windows version, after reading
-// docs/COMPATIBILITY.md; even then a single unambiguous candidate is required.
-#ifndef STADIALINK_ALLOW_UNVERIFIED_IID
-#define STADIALINK_ALLOW_UNVERIFIED_IID 0
+// Compatibility-first default. Build with STADIALINK_AUTO_IID=0 to restore the
+// strict fail-closed behaviour (never touch an unverified vtable).
+#ifndef STADIALINK_AUTO_IID
+#define STADIALINK_AUTO_IID 1
+#endif
+// Honour the old switch so an existing "0" build keeps its meaning.
+#if defined(STADIALINK_ALLOW_UNVERIFIED_IID) && !STADIALINK_ALLOW_UNVERIFIED_IID
+#undef STADIALINK_AUTO_IID
+#define STADIALINK_AUTO_IID 0
 #endif
 
 using Microsoft::WRL::ComPtr;
@@ -103,9 +113,11 @@ static HRESULT ResultVector(IInspectable* result,IInspectable** vector,UINT32* c
     if(SUCCEEDED(hr) && *count>128) return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
     return hr;
 }
+
 // Microsoft.Bluetooth.Profiles.Gatt.Interface.GattClientDevice device facet.
 // Each IID was read from the inbox HidOverGatt.dll of its build, where it sits
-// next to the statics IID that both builds share.
+// next to the statics IID that both builds share. The same values live in
+// iid-policy.h so the exclusion policy is unit-testable.
 static const GUID DeviceIids[] = {
     {0x6bbede1f,0x797f,0x5c17,{0x8a,0xc7,0x3f,0x34,0x20,0x37,0xcb,0x59}}, // Windows 26200 (verified)
     {0x0799a6a6,0xe942,0x5218,{0x8a,0x0e,0x7c,0x9b,0x99,0x6e,0x41,0x58}}, // Windows 22631 (verified)
@@ -120,89 +132,194 @@ static HRESULT QueryDeviceFacet(IInspectable* created,const GUID& iid,IInspectab
     return S_OK;
 }
 
-// For an unrecognised Windows build: IInspectable::GetIids (slot 3) lists the
-// private interfaces the created object really implements. WinRT
-// parameterized interfaces carry 0x5xxx in Data3, which separates them from
-// IUnknown / IInspectable / IAgileObject / IStringable plumbing.
-//
-// That bit pattern is NOT proof of identity. If a future build exposes more
-// than one such interface, picking the first one and calling vtable slots
-// 11/14 on it can crash the UMDF host. Normal builds therefore only count the
-// candidates and fail closed. STADIALINK_ALLOW_UNVERIFIED_IID=1 re-enables
-// auto-selection for a throwaway test build, and only with one candidate.
-static HRESULT DiscoverDeviceIid(IInspectable* created,GUID* selected,ULONG* index,
-                                 ULONG* candidateCount) {
-    *candidateCount=0;
-    ULONG count=0;GUID* iids=nullptr;
+// ---------------------------------------------------------------------------
+// Persistent, best-effort state under HKCU (the UMDF host's own hive).
+// If the key cannot be opened every write is a no-op and auto-adaptation still
+// works; only the crash circuit breaker is lost.
+// ---------------------------------------------------------------------------
+static const wchar_t* const kStorePath=L"SOFTWARE\\StadiaLink\\PrivateGatt";
+static const size_t kMaxBlacklist=4;
+static const size_t kMaxAutoAttempts=3;
+
+struct IidStore {
+    GUID verified={};bool hasVerified=false;
+    GUID blacklist[kMaxBlacklist]={};size_t blacklistCount=0;
+    bool crashDetected=false;GUID crashed={};
+    bool available=false;
+};
+static HKEY OpenStoreKey(REGSAM access) {
+    HKEY key=nullptr;
+    LONG rc=RegCreateKeyExW(HKEY_CURRENT_USER,kStorePath,0,nullptr,
+                            REG_OPTION_NON_VOLATILE,access,nullptr,&key,nullptr);
+    return rc==ERROR_SUCCESS?key:nullptr;
+}
+static bool ReadGuid(HKEY key,const wchar_t* name,GUID* out) {
+    DWORD size=sizeof(*out),type=0;
+    return RegQueryValueExW(key,name,nullptr,&type,reinterpret_cast<BYTE*>(out),&size)==ERROR_SUCCESS
+        && type==REG_BINARY && size==sizeof(*out);
+}
+static void WriteGuid(HKEY key,const wchar_t* name,const GUID& g) {
+    RegSetValueExW(key,name,0,REG_BINARY,reinterpret_cast<const BYTE*>(&g),sizeof(g));
+}
+static size_t ReadList(HKEY key,const wchar_t* name,GUID* out,size_t cap) {
+    BYTE buffer[16*8]={};DWORD size=sizeof(buffer),type=0;
+    if(RegQueryValueExW(key,name,nullptr,&type,buffer,&size)!=ERROR_SUCCESS
+       || type!=REG_BINARY || size%16!=0) return 0;
+    size_t n=size/16;if(n>cap) n=cap;
+    CopyMemory(out,buffer,n*16);
+    return n;
+}
+static void WriteList(HKEY key,const wchar_t* name,const GUID* list,size_t count) {
+    if(count) RegSetValueExW(key,name,0,REG_BINARY,reinterpret_cast<const BYTE*>(list),(DWORD)(count*16));
+    else RegDeleteValueW(key,name);
+}
+static IidStore LoadIidStore() {
+    IidStore s;
+    HKEY key=OpenStoreKey(KEY_READ|KEY_WRITE);
+    if(!key) return s; // no persistence: still allow auto-adaptation
+    s.available=true;
+    s.hasVerified=ReadGuid(key,L"Verified",&s.verified);
+    s.blacklistCount=ReadList(key,L"Blacklist",s.blacklist,kMaxBlacklist);
+    GUID attempt;
+    if(ReadGuid(key,L"Attempt",&attempt)) {
+        // The host died before the attempt marker was cleared. Never retry this
+        // interface automatically; other candidates may still be tried.
+        s.crashDetected=true;s.crashed=attempt;
+        s.blacklistCount=StadiaIidListAdd(s.blacklist,s.blacklistCount,kMaxBlacklist,&attempt);
+        WriteList(key,L"Blacklist",s.blacklist,s.blacklistCount);
+        RegDeleteValueW(key,L"Attempt");
+    }
+    RegCloseKey(key);
+    return s;
+}
+static IidStore& IidStoreState() {
+    static IidStore state=LoadIidStore();
+    return state;
+}
+static void SetAttempt(const GUID& g) {
+    HKEY key=OpenStoreKey(KEY_WRITE);if(!key) return;
+    WriteGuid(key,L"Attempt",g);RegCloseKey(key);
+}
+static void ClearAttempt() {
+    HKEY key=OpenStoreKey(KEY_WRITE);if(!key) return;
+    RegDeleteValueW(key,L"Attempt");RegCloseKey(key);
+}
+static void SetVerified(const GUID& g) {
+    IidStore& s=IidStoreState();s.verified=g;s.hasVerified=true;
+    HKEY key=OpenStoreKey(KEY_WRITE);if(!key) return;
+    WriteGuid(key,L"Verified",g);RegCloseKey(key);
+}
+static void ClearVerified() {
+    IidStore& s=IidStoreState();s.hasVerified=false;s.verified={};
+    HKEY key=OpenStoreKey(KEY_WRITE);if(!key) return;
+    RegDeleteValueW(key,L"Verified");RegCloseKey(key);
+}
+static void AddBlacklist(const GUID& g) {
+    IidStore& s=IidStoreState();
+    s.blacklistCount=StadiaIidListAdd(s.blacklist,s.blacklistCount,kMaxBlacklist,&g);
+    HKEY key=OpenStoreKey(KEY_WRITE);if(!key) return;
+    WriteList(key,L"Blacklist",s.blacklist,s.blacklistCount);RegCloseKey(key);
+}
+
+// ---------------------------------------------------------------------------
+// Static vtable sanity check. Nothing is executed: we only verify that the
+// unknown facet's method slots point into committed executable code, and rank
+// candidates by how many of their methods live in the same image as the
+// activation factory (i.e. the same private Windows component).
+// ---------------------------------------------------------------------------
+static bool IsExecutableCode(void* p) {
+    if(!p) return false;
+    MEMORY_BASIC_INFORMATION mbi;
+    if(!VirtualQuery(p,&mbi,sizeof(mbi)) || mbi.State!=MEM_COMMIT) return false;
+    DWORD protect=mbi.Protect & 0xFF;
+    return protect==PAGE_EXECUTE || protect==PAGE_EXECUTE_READ
+        || protect==PAGE_EXECUTE_READWRITE || protect==PAGE_EXECUTE_WRITECOPY;
+}
+static HRESULT ScoreDeviceVtable(IInspectable* facet,void* reference,int* score) {
+    *score=0;
+    void** vt=*reinterpret_cast<void***>(facet);
+    if(!vt) return E_UNEXPECTED;
+    void* refBase=nullptr;MEMORY_BASIC_INFORMATION ref;
+    if(reference && VirtualQuery(reference,&ref,sizeof(ref))) refBase=ref.AllocationBase;
+    void* seen[9]={};int distinct=0;int sameImage=0;
+    for(size_t i=6;i<=14;i++) {
+        void* method=vt[i];
+        if(!IsExecutableCode(method)) return HRESULT_FROM_WIN32(ERROR_INVALID_FUNCTION);
+        bool duplicate=false;
+        for(int j=0;j<distinct;j++) if(seen[j]==method) {duplicate=true;break;}
+        if(!duplicate && distinct<9) seen[distinct++]=method;
+        MEMORY_BASIC_INFORMATION mbi;
+        if(refBase && VirtualQuery(method,&mbi,sizeof(mbi)) && mbi.AllocationBase==refBase) sameImage++;
+    }
+    // A real device interface has several distinct methods. A stub or an
+    // unrelated interface that repeats one implementation is not usable.
+    if(distinct<5) return HRESULT_FROM_WIN32(ERROR_INVALID_FUNCTION);
+    *score=sameImage;
+    return S_OK;
+}
+
+struct Candidate { GUID iid;ULONG order;int score; };
+static HRESULT CollectCandidates(IInspectable* created,void* reference,
+                                 Candidate* out,size_t cap,size_t* count,ULONG* plausible) {
+    *count=0;*plausible=0;
+    ULONG n=0;GUID* iids=nullptr;
     HRESULT hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,ULONG*,GUID**)>(created,3)
-        (created,&count,&iids);
+        (created,&n,&iids);
     if(FAILED(hr)) return hr;
-    if(!iids || !count || count>32) {
+    if(!iids || !n || n>64) {
         if(iids) CoTaskMemFree(iids);
         return E_UNEXPECTED;
     }
-    GUID first={};ULONG firstIndex=0;ULONG candidates=0;
-    for(ULONG i=0;i<count;i++) {
-        const GUID& candidate=iids[i];
-        if((candidate.Data3 & 0xF000)!=0x5000) continue;
-        bool known=false;
-        for(size_t k=0;k<DEVICE_IID_COUNT;k++) {
-            if(IsEqualGUID(candidate,DeviceIids[k])) {known=true;break;}
-        }
-        if(known) continue;
-        if(candidates==0) {first=candidate;firstIndex=i;}
-        candidates++;
+    IidStore& store=IidStoreState();
+    Candidate all[64]={};size_t total=0;
+    for(ULONG i=0;i<n;i++) {
+        if(!StadiaIidIsPlausible(&iids[i])) continue;
+        if(*plausible<0x3F) (*plausible)++;
+        if(i>0x1F) continue; // keep the diagnostic index inside 0x80..0x9F
+        if(StadiaIidListContains(store.blacklist,store.blacklistCount,&iids[i])) continue;
+        ComPtr<IInspectable> facet;
+        hr=QueryDeviceFacet(created,iids[i],facet.GetAddressOf());
+        if(FAILED(hr) || !facet) continue;
+        int score=0;
+        if(FAILED(ScoreDeviceVtable(facet.Get(),reference,&score))) continue;
+        all[total].iid=iids[i];all[total].order=i;all[total].score=score;total++;
+        if(total==64) break;
     }
     CoTaskMemFree(iids);
-    *candidateCount=candidates;
-#if STADIALINK_ALLOW_UNVERIFIED_IID
-    if(candidates==1) {*selected=first;*index=0x80+firstIndex;return S_OK;}
-    return E_NOINTERFACE;
-#else
-    (void)selected;(void)index;(void)first;(void)firstIndex;
-    return HRESULT_FROM_WIN32(ERROR_NOT_SUPPORTED);
-#endif
+    // Prefer facets implemented in the factory's image; stable order otherwise.
+    for(size_t a=1;a<total;a++) {
+        Candidate key=all[a];size_t b=a;
+        while(b>0 && all[b-1].score<key.score) {all[b]=all[b-1];b--;}
+        all[b]=key;
+    }
+    *count=total<cap?total:cap;
+    for(size_t a=0;a<*count;a++) out[a]=all[a];
+    return S_OK;
 }
 
-static HRESULT GetDevice(UINT64 address,IInspectable** device,Session& session) {
-    *device=nullptr;
+static HRESULT CreateDeviceObject(UINT64 address,IInspectable** created,void** reference,Session& session) {
+    *created=nullptr;*reference=nullptr;
     session.Diagnostics.Stage=STADIA_GATT_STAGE_ACTIVATION;
-    const GUID staticsIID={0xcbaa1a5f,0xdcef,0x508b,{0xac,0xc6,0x15,0x8f,0x1e,0x16,0x0c,0x0f}};
     ComPtr<GattStatics> factory;
-    HRESULT hr=RoGetActivationFactory(HStringReference(L"Microsoft.Bluetooth.Profiles.Gatt.Interface.GattClientDevice").Get(),staticsIID,(void**)factory.GetAddressOf());
+    HRESULT hr=RoGetActivationFactory(
+        HStringReference(L"Microsoft.Bluetooth.Profiles.Gatt.Interface.GattClientDevice").Get(),
+        STADIA_IID_STATICS,(void**)factory.GetAddressOf());
     if(FAILED(hr)) return hr;
+    *reference=Slot<void*>(reinterpret_cast<IInspectable*>(factory.Get()),6);
 
     session.Diagnostics.Stage=STADIA_GATT_STAGE_CREATE_ASYNC;
     RemoteAddress remote={address,1,0};ComPtr<IInspectable> operation;
     hr=factory->CreateAsync(remote,0,nullptr,nullptr,0,&operation);if(FAILED(hr)) return hr;
 
     session.Diagnostics.Stage=STADIA_GATT_STAGE_AWAIT_CREATE;
-    ComPtr<IInspectable> created;
-    hr=Await(operation.Get(),&created,&session.Diagnostics.AsyncStage);
+    ComPtr<IInspectable> createdObject;
+    hr=Await(operation.Get(),&createdObject,&session.Diagnostics.AsyncStage);
     if(FAILED(hr)) return hr;
-    if(!created) return E_UNEXPECTED;
-
-    session.Diagnostics.Stage=STADIA_GATT_STAGE_DEVICE_QUERY;
-    for(size_t i=0;i<DEVICE_IID_COUNT;i++) {
-        hr=QueryDeviceFacet(created.Get(),DeviceIids[i],device);
-        if(SUCCEEDED(hr)) {session.Diagnostics.IidIndex=(ULONG)(i+1);return S_OK;}
-        // E_NOINTERFACE is the expected "this IID belongs to another build"
-        // result. Any other failure must not be masked by the next IID.
-        if(hr!=E_NOINTERFACE) return hr;
-    }
-    // No verified IID matched. Enumerate candidates for diagnosis, but do not
-    // call an unverified vtable from inside the UMDF host (see docs/COMPATIBILITY.md).
-    GUID discovered;ULONG index=0;
-    hr=DiscoverDeviceIid(created.Get(),&discovered,&index,
-                         &session.Diagnostics.CandidateCount);
-    if(FAILED(hr)) {
-        session.Diagnostics.Stage=STADIA_GATT_STAGE_IID_UNVERIFIED;
-        return hr;
-    }
-    hr=QueryDeviceFacet(created.Get(),discovered,device);
-    if(SUCCEEDED(hr)) session.Diagnostics.IidIndex=index;
-    return hr;
+    if(!createdObject) return E_UNEXPECTED;
+    *created=createdObject.Detach();
+    return S_OK;
 }
+
 static HRESULT ReadReportReference(IInspectable* discovery,IInspectable* characteristic,const CharacteristicInfo& info,UCHAR* id,UCHAR* type,ULONG* asyncStage) {
     GUID reference=BluetoothUuid(0x2908);
     ComPtr<IInspectable> operation;
@@ -232,12 +349,14 @@ static HRESULT ReadReportReference(IInspectable* discovery,IInspectable* charact
     BYTE* bytes=nullptr;hr=access->Buffer(&bytes);if(FAILED(hr) || !bytes) return FAILED(hr)?hr:E_UNEXPECTED;
     *id=bytes[0];*type=bytes[1];return S_OK;
 }
-static HRESULT Open(UINT64 address,Session& session) {
-    ComPtr<IInspectable> device;
-    HRESULT hr=GetDevice(address,device.GetAddressOf(),session);if(FAILED(hr)) return hr;
+
+// Everything after the device facet is resolved. Its checks are also the ABI
+// validator: exactly one HID service, matching service UUID, Report Reference
+// 5/2. A wrongly guessed interface cannot pass all of them.
+static HRESULT TryOpenWithDevice(IInspectable* device,Session& session) {
     session.Diagnostics.Stage=STADIA_GATT_STAGE_HID_SERVICE;
     GUID hid=BluetoothUuid(0x1812);ComPtr<IInspectable> operation;
-    hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,const GUID*,UINT32,IInspectable**)>(device.Get(),11)(device.Get(),&hid,0,&operation);
+    HRESULT hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,const GUID*,UINT32,IInspectable**)>(device,11)(device,&hid,0,&operation);
     if(FAILED(hr)) return hr;
     ComPtr<IInspectable> result;hr=Await(operation.Get(),&result,&session.Diagnostics.AsyncStage);if(FAILED(hr)) return hr;
     ComPtr<IInspectable> vector;UINT32 count=0;hr=ResultVector(result.Get(),&vector,&count);if(FAILED(hr)) return hr;
@@ -248,8 +367,8 @@ static HRESULT Open(UINT64 address,Session& session) {
     if(!IsEqualGUID(serviceInfo.Uuid,hid)) return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
     session.Diagnostics.Stage=STADIA_GATT_STAGE_SERVICE_OBJECT;
     ComPtr<IInspectable> service;
-    hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,const ServiceInfo*,UINT64,UINT32,IInspectable**)>(device.Get(),14)
-        (device.Get(),&serviceInfo,0x0000000100000001ULL,0,&service);
+    hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,const ServiceInfo*,UINT64,UINT32,IInspectable**)>(device,14)
+        (device,&serviceInfo,0x0000000100000001ULL,0,&service);
     if(FAILED(hr) || !service) return FAILED(hr)?hr:E_UNEXPECTED;
     session.Diagnostics.Stage=STADIA_GATT_STAGE_DISCOVERY;
     ComPtr<IInspectable> discovery;
@@ -273,7 +392,7 @@ static HRESULT Open(UINT64 address,Session& session) {
         UCHAR id=0,type=0;hr=ReadReportReference(discovery.Get(),characteristic.Get(),info,&id,&type,&session.Diagnostics.AsyncStage);
         if(FAILED(hr)) return hr;
         if(id!=5 || type!=2) continue;
-        hr=RoGetAgileReference(AGILEREFERENCE_DEFAULT,__uuidof(IInspectable),device.Get(),&session.Device);if(FAILED(hr)) return hr;
+        hr=RoGetAgileReference(AGILEREFERENCE_DEFAULT,__uuidof(IInspectable),device,&session.Device);if(FAILED(hr)) return hr;
         hr=RoGetAgileReference(AGILEREFERENCE_DEFAULT,__uuidof(IInspectable),service.Get(),&session.Service);if(FAILED(hr)) return hr;
         // The native characteristic proxy implements FtmBase. Preserve the
         // original typed interface facet rather than resolving its COM identity.
@@ -283,6 +402,100 @@ static HRESULT Open(UINT64 address,Session& session) {
         return S_OK;
     }
     return HRESULT_FROM_WIN32(ERROR_NOT_FOUND);
+}
+
+// No C++ objects in this frame: SEH cannot unwind them. A bad candidate that
+// faults becomes an HRESULT instead of killing WUDFHost.exe.
+static HRESULT GuardedTryOpen(IInspectable* device,Session* session) {
+    __try {
+        return TryOpenWithDevice(device,*session);
+    }
+    __except(EXCEPTION_EXECUTE_HANDLER) {
+        return HRESULT_FROM_WIN32(ERROR_INVALID_FUNCTION);
+    }
+}
+
+// Only reached when neither hardware-verified IID matched.
+static HRESULT AutoAdapt(IInspectable* created,void* reference,Session& session) {
+    IidStore& store=IidStoreState();
+    int cacheUsed=0;
+#if STADIALINK_AUTO_IID
+    // A previously validated IID is cheaper and safer than a fresh guess.
+    if(store.hasVerified
+       && !StadiaIidListContains(store.blacklist,store.blacklistCount,&store.verified)) {
+        ComPtr<IInspectable> facet;
+        HRESULT hr=QueryDeviceFacet(created,store.verified,facet.GetAddressOf());
+        if(SUCCEEDED(hr) && facet) {
+            cacheUsed=1;
+            STADIA_GATT_DIAGNOSTICS saved=session.Diagnostics;
+            session.Diagnostics.IidIndex=STADIA_IID_SOURCE_CACHE;
+            hr=GuardedTryOpen(facet.Get(),&session);
+            if(SUCCEEDED(hr)) return S_OK;
+            // A Windows update can invalidate the cache; drop it and re-discover.
+            ClearVerified();
+            session.Diagnostics=saved;
+        }
+    }
+
+    Candidate candidates[kMaxAutoAttempts]={};size_t count=0;ULONG plausible=0;
+    HRESULT discovery=CollectCandidates(created,reference,candidates,kMaxAutoAttempts,&count,&plausible);
+    session.Diagnostics.CandidateCount=StadiaEncodeCandidates(plausible,store.crashDetected,cacheUsed);
+    if(FAILED(discovery)) {
+        session.Diagnostics.Stage=STADIA_GATT_STAGE_IID_UNVERIFIED;
+        return discovery;
+    }
+    HRESULT last=HRESULT_FROM_WIN32(ERROR_NOT_SUPPORTED);
+    for(size_t i=0;i<count;i++) {
+        ComPtr<IInspectable> facet;
+        HRESULT hr=QueryDeviceFacet(created,candidates[i].iid,facet.GetAddressOf());
+        if(FAILED(hr) || !facet) {last=hr;continue;}
+        STADIA_GATT_DIAGNOSTICS saved=session.Diagnostics;
+        // Marker survives a host crash. On the next boot LoadIidStore() moves
+        // this IID to the blacklist, so a bad guess can never crash-loop.
+        SetAttempt(candidates[i].iid);
+        hr=GuardedTryOpen(facet.Get(),&session);
+        if(SUCCEEDED(hr)) {
+            SetVerified(candidates[i].iid);
+            ClearAttempt();
+            session.Diagnostics.IidIndex=(UCHAR)(STADIA_IID_SOURCE_AUTO+candidates[i].order);
+            return S_OK;
+        }
+        ClearAttempt();
+        AddBlacklist(candidates[i].iid);
+        session.Diagnostics=saved; // keep candidate count, drop failed stage
+        last=hr;
+    }
+    session.Diagnostics.Stage=count?STADIA_GATT_STAGE_AUTO_FAILED:STADIA_GATT_STAGE_IID_UNVERIFIED;
+    return last;
+#else
+    (void)cacheUsed;(void)store;
+    Candidate ignored[1]={};size_t count=0;ULONG plausible=0;
+    HRESULT discovery=CollectCandidates(created,reference,ignored,1,&count,&plausible);
+    session.Diagnostics.CandidateCount=StadiaEncodeCandidates(plausible,store.crashDetected,0);
+    session.Diagnostics.Stage=STADIA_GATT_STAGE_IID_UNVERIFIED;
+    return FAILED(discovery)?discovery:HRESULT_FROM_WIN32(ERROR_NOT_SUPPORTED);
+#endif
+}
+
+static HRESULT Open(UINT64 address,Session& session) {
+    ComPtr<IInspectable> created;void* reference=nullptr;
+    HRESULT hr=CreateDeviceObject(address,created.GetAddressOf(),&reference,session);
+    if(FAILED(hr)) return hr;
+
+    session.Diagnostics.Stage=STADIA_GATT_STAGE_DEVICE_QUERY;
+    for(size_t i=0;i<DEVICE_IID_COUNT;i++) {
+        ComPtr<IInspectable> facet;
+        hr=created->QueryInterface(DeviceIids[i],(void**)facet.GetAddressOf());
+        if(SUCCEEDED(hr) && facet) {
+            session.Diagnostics.IidIndex=(ULONG)(i+1);
+            // Verified path: no SEH, no registry, no policy changes at all.
+            return TryOpenWithDevice(facet.Get(),session);
+        }
+        // E_NOINTERFACE is the expected "this IID belongs to another build"
+        // result. Any other failure must not be masked by the next IID.
+        if(hr!=E_NOINTERFACE) return hr;
+    }
+    return AutoAdapt(created.Get(),reference,session);
 }
 extern "C" HRESULT StadiaPrivateGattOpen(UINT64 address,void** output,STADIA_GATT_DIAGNOSTICS* diagnostics) {
     if(!output || !diagnostics || !address) return E_INVALIDARG;

@@ -125,8 +125,9 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 本分支的修复：
 
 - 依次尝试两个**已在实机验证**的设备接口 IID（26200、22631）；`QueryInterface` 只有返回 `E_NOINTERFACE` 才继续尝试，其他 HRESULT 立即上报，不再被掩盖。
-- 对未知 build，用 `IInspectable::GetIids` 枚举候选并把数量写入状态报告，然后**失败关闭**：不自动调用未经 ABI 验证的接口，避免在 UMDF 宿主进程里按猜错的 vtable 槽位调用函数。
-- 打开链路的主阶段、IID 索引、未验证候选数与异步失败点分别写入 status feature report 第 60–63 字节；`Await()` 细分为 `IAsyncInfo` 查询、`get_Status`、`GetResults`、异步错误与超时。
+- 对未知 build **默认自动适配**：`IInspectable::GetIids` 枚举候选 → vtable 静态校验 → 完整 HID GATT 链路语义验证（HID 服务 UUID、Report Reference `5/2`）→ SEH 隔离调用；全部通过才使用，并把该 IID 缓存供下次开机直接复用。
+- 容错：候选按「实现是否与激活工厂位于同一映像」排序，每次最多尝试 3 个；验证失败或导致宿主崩溃的 IID 写入黑名单不会重试，避免崩溃循环。需要严格停用自动适配时可用 `STADIALINK_AUTO_IID=0` 重新编译。机制详见 [兼容性矩阵](docs/COMPATIBILITY.md)。
+- 打开链路的主阶段、IID 来源（`1/2` 已验证、`0x40` 缓存、`0x80+i` 本次自动验证）、候选数与熔断标志、异步失败点分别写入 status feature report 第 60–63 字节；`Await()` 细分为 `IAsyncInfo` 查询、`get_Status`、`GetResults`、异步错误与超时。
 - USB 震动、输入与 XInput 翻译链路未改动。
 
 排障命令：
@@ -156,7 +157,7 @@ python .\tests\probe-private-gatt.py     # 只读枚举本机私有接口 IID
 
 ## 🤝 兼容性、致谢与许可
 
-蓝牙震动依赖私有 Windows 接口，**仅在 Windows 11 Build 26200 与 22631 完成实机验证**。其他版本（含 Windows 10）只具备 UMDF 2.31 框架层面的可安装性，私有 GATT 震动接口未验证、不承诺可用，详见 [兼容性矩阵](docs/COMPATIBILITY.md)；系统更新也可能改变这些接口。耳机孔音频仅通过 USB 工作；不提供蓝牙音频、内置麦克风激活与 Wi-Fi 激活。仅支持 **x64**、UMDF 2.31（Win10 1809+ / Win11）与 .NET Framework 4.8。驱动为自签名，未做微软签名，新机器需重建证书信任。
+蓝牙震动依赖私有 Windows 接口，**仅在 Windows 11 Build 26200 与 22631 完成实机验证**。其他版本（含 Windows 10）只具备 UMDF 2.31 框架层面的可安装性；程序会尝试自动适配设备接口 IID，但未实机验证、不承诺成功，详见 [兼容性矩阵](docs/COMPATIBILITY.md)；系统更新也可能改变这些接口。耳机孔音频仅通过 USB 工作；不提供蓝牙音频、内置麦克风激活与 Wi-Fi 激活。仅支持 **x64**、UMDF 2.31（Win10 1809+ / Win11）与 .NET Framework 4.8。驱动为自签名，未做微软签名，新机器需重建证书信任。
 
 **已并入的第三方代码：[aisk/WinStadia](https://github.com/aisk/WinStadia)**。它是本仓库原生驱动的基础，包含 StadiaLink 的修改：UMDF 结构、Stadia 到 XInput 的输入翻译、`driver/` 中的 USB/蓝牙传输，以及派生脚本与 INF。
 
@@ -173,9 +174,9 @@ python .\tests\probe-private-gatt.py     # 只读枚举本机私有接口 IID
 | 路径 | 说明 |
 | --- | --- |
 | `app/`、`driver/`、`tests/` | 改动后的完整源码与构建脚本。 |
-| `dist/` | 本次编译产物（简体中文安装包、主程序、更新包、原生库、驱动 DLL/INF，含关闭按钮修复与 2026-11-10 审查加固）与 SHA-256 清单。 |
+| `dist/` | 本次编译产物（简体中文安装包、主程序、更新包、原生库、驱动 DLL/INF，含关闭按钮修复、审查加固与未知系统自动适配）与 SHA-256 清单。 |
 | `RELEASE_NOTES.md` | 本分支版本说明：根因、改动、产物、验证与使用。 |
 | `CHANGELOG.md` | 更新后的版本历史。 |
 | `docs/CHANGES.md` | 逐文件改动说明与排除清单。 |
-| `docs/COMPATIBILITY.md` | 兼容性矩阵、失败关闭说明与新增 IID 的实机验证流程。 |
+| `docs/COMPATIBILITY.md` | 兼容性矩阵、分层自动适配与熔断机制、缓存/黑名单重置方法及新增 IID 的实机验证流程。 |
 | `patches/v1.0.2-hotfix.patch` | 相对 1.0.2 的可应用代码补丁。 |

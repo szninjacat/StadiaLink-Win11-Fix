@@ -11,6 +11,10 @@ if ($env:STADIALINK_VC_ENV_READY -ne '1') {
 if($LASTEXITCODE){throw 'Configuration tests compilation failed'}
 & "$out\configuration-tests.exe" | Tee-Object "$out\translation-tests.txt"
 if($LASTEXITCODE){throw 'Translation tests failed'}
+& cl /nologo /W4 /O2 /MT /EHsc /std:c++17 /Fo"$out\iid-policy-tests.obj" /Fe"$out\iid-policy-tests.exe" "$PSScriptRoot\iid-policy-tests.cpp"
+if($LASTEXITCODE){throw 'IID policy tests compilation failed'}
+& "$out\iid-policy-tests.exe" | Tee-Object "$out\iid-policy-tests.txt"
+if($LASTEXITCODE){throw 'IID policy tests failed'}
 $process=Start-Process "$root\release\StadiaLink.exe" -ArgumentList '--self-test',('"'+[IO.Path]::GetFullPath("$out\model-tests.txt")+'"') -PassThru -Wait -WindowStyle Hidden
 if($process.ExitCode){throw 'Application model tests failed'}
 Get-Content "$out\model-tests.txt"

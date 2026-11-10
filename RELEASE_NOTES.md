@@ -57,12 +57,12 @@ WPF 细节：`Closing` 事件里仅设置 `WindowState=Minimized` 会被关闭�
 
 | 文件 | 大小 (B) | SHA-256（前 16 位） | 说明 |
 | --- | --- | --- | --- |
-| `StadiaLink.Setup.exe` | 585,216 | `ef4060c407cb33cb` | 简体中文完整安装包（内嵌应用 + 驱动 + 原生库 + 源码，含关闭按钮修复与 2026-11-10 审查加固） | 简体中文完整安装包（内嵌应用 + 驱动 + 原生库 + 源码，含关闭按钮修复） |
-| `StadiaLink.exe` | 251,392 | `1d54f62807b844bb` | WPF 主程序 x64 | WPF 主程序 x64 |
-| `StadiaLink.Update.exe` | 506,880 | `745577536353f483` | 仅应用更新包 | 仅应用更新包 |
-| `StadiaDevice.dll` | 165,376 | `6600c5205022027d` | 原生电池读取库 | 原生电池读取库 |
-| `driver/winstadia.dll` | 145,920 | `3636af49dc046f1c` | UMDF 驱动（含双 IID、阶段诊断与失败关闭） | UMDF 驱动（含双 IID 与阶段诊断） |
-| `driver/winstadia.inf` | 3,969 | `0b111ac3ff72b84d` | `DriverVer=11/10/2026,18.46.2.678` |
+| `StadiaLink.Setup.exe` | 594,944 | `6dca7491d78cf0c6` | 简体中文完整安装包（内嵌应用 + 驱动 + 原生库 + 源码，含关闭按钮修复与 2026-11-10 审查加固） | 简体中文完整安装包（内嵌应用 + 驱动 + 原生库 + 源码，含关闭按钮修复） |
+| `StadiaLink.exe` | 251,392 | `530c56e950e99161` | WPF 主程序 x64 | WPF 主程序 x64 |
+| `StadiaLink.Update.exe` | 513,024 | `5154e61b705d2f6c` | 仅应用更新包 | 仅应用更新包 |
+| `StadiaDevice.dll` | 165,376 | `496e4e94817eb23b` | 原生电池读取库 | 原生电池读取库 |
+| `driver/winstadia.dll` | 152,064 | `06b70008929b2cb7` | UMDF 驱动（含双 IID、阶段诊断与分层自动适配） | UMDF 驱动（含双 IID 与阶段诊断） |
+| `driver/winstadia.inf` | 3,970 | `fc0a1d07216dbd48` | `DriverVer=11/10/2026,19.30.26.699` |
 
 另含 2 个 `.exe.config` 及 `SHA256.txt` / `SHA256SUMS.txt`。完整哈希以 `dist/SHA256SUMS.txt` 为准，可用 `Get-FileHash -Algorithm SHA256` 复核。已从安装包内嵌的 `payload.zip` 中解出核对：`driver/pkg/winstadia.dll`、`driver/pkg/winstadia.inf` 与 `StadiaLink.exe` 均和 `dist/` 中的副本逐字节一致。
 
@@ -83,7 +83,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 
 ## 5. 验证结果
 
-- `driver/out/pkg/winstadia.dll` 同时含 26200 与 22631 两个设备 IID，并含本次审查加固的 `ERROR_NOT_SUPPORTED` 失败关闭分支；Setup.exe 内嵌副本逐字节相同（2026-11-10 重新编译）。
+- `driver/out/pkg/winstadia.dll` 同时含 26200 与 22631 两个设备 IID，并含分层自动适配、SEH 隔离与注册表熔断逻辑；Setup.exe 内嵌副本逐字节相同（2026-11-10 第二次重新编译）。
 - `tests/run.ps1`：配置翻译 **4,864,527 次检查 PASS**、应用模型自测 PASS。
 - 应用 `--self-test` PASS（5 列翻译表完整、动态翻译正常）；安装器 `/languages-test` PASS（5 种语言全部渲染）。
 - **默认语言截图与显式设为 `zh` 的截图 SHA-256 完全相同**，界面文字全部简体中文，无西语残留（仅保留 StadiaLink / Windows / USB / x64 / GPLv3 等专有名词）。
@@ -103,8 +103,8 @@ driver/     UMDF 驱动源码、INF、安装与状态脚本
 tests/      测试与两个诊断/生成工具
 dist/       本次编译产物 + SHA-256 清单
 docs/CHANGES.md              逐文件改动说明与排除清单
-docs/COMPATIBILITY.md        兼容性矩阵、失败关闭说明与新增 IID 实机验证流程
-patches/v1.0.2-hotfix.patch  相对 1.0.2 的可 apply 代码补丁（15 个文本文件）
+docs/COMPATIBILITY.md        兼容性矩阵、分层自动适配与熔断机制、新增 IID 实机验证流程
+patches/v1.0.2-hotfix.patch  相对 1.0.2 的可 apply 代码补丁（17 个文本文件）
 ```
 
 `dist/` 被有意纳入版本控制（见 `.gitignore` 注释）；构建中间产物、智能体工作目录与本机专用脚本均未包含。
@@ -119,7 +119,7 @@ patches/v1.0.2-hotfix.patch  相对 1.0.2 的可 apply 代码补丁（15 个文�
 
 ## 8. 已知限制
 
-1. **跨任意 Windows 版本不保证**：蓝牙震动依赖未公开私有 ABI。`statics IID` 仅在 22631 / 26200 验证一致；**未知 build 现在直接失败关闭**（阶段 `11`），不再自动调用未经 ABI 验证的设备接口，但 `GetIids` 也**不适配 vtable 方法顺序**，私有类本身可能被移除。**Windows 10 只有框架层面的可安装性**，私有 GATT 震动接口未验证、不承诺可用；矩阵见 [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)。换系统后请先用 `tests/probe-private-gatt.py` 与 `driver/status.ps1` 的 Stage 判断：`5` 是 IID 问题，`6+` 是布局问题，`11` 是缺少已验证 IID。
+1. **跨任意 Windows 版本不保证**：蓝牙震动依赖未公开私有 ABI。`statics IID` 仅在 22631 / 26200 验证一致；未知 build 会按第 10 节的五层验证**自动尝试适配**设备接口 IID 并缓存成功结果，但 `GetIids` **不适配 vtable 方法顺序**，验证失败即阶段 `12` 停用，私有类本身也可能被移除。**Windows 10 只有框架层面的可安装性**，私有 GATT 震动接口未实机验证、不承诺成功；矩阵见 [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)。换系统后请先用 `tests/probe-private-gatt.py` 与 `driver/status.ps1` 的 Stage 判断：`5` 是 IID 问题，`6+` 是布局问题，`11`/`12` 是自动适配不可用或未通过。
 2. 私有类 `GattClientDevice` 本身可能被移除或重构。
 3. 平台依赖：仅 **x64**、UMDF 2.31（Win10 1809+ / Win11）、.NET Framework 4.8.1、INF 固定匹配 `VID_18D1&PID_9400`。
 4. 驱动为**自签名**，未做微软签名；每台机器需重建证书信任，SmartScreen / Secure Boot 策略可能拦截。
@@ -127,6 +127,8 @@ patches/v1.0.2-hotfix.patch  相对 1.0.2 的可 apply 代码补丁（15 个文�
 ## 9. 代码审查后的加固（2026-11-10）
 
 按第三方代码审查结论修订。**22631 / 26200 两个已验证构建的行为完全不变**，改动只涉及未知 build 的回退路径、错误分类与诊断。
+
+> 说明：本节记录当天第一次加固（失败关闭）。同日第二次更新见第 10 节，已改为默认开启的分层自动适配；两次更新中 22631 / 26200 的行为都未改变。
 
 | 审查项 | 处理 |
 | --- | --- |
@@ -141,3 +143,23 @@ patches/v1.0.2-hotfix.patch  相对 1.0.2 的可 apply 代码补丁（15 个文�
 **仍未解决 / 不在本次范围**：没有 Windows 10 实机 IID 数据，也没有 22H2 / 24H2 的验证记录；这些版本需按 `docs/COMPATIBILITY.md` 第 4 节走完流程才能列入 `DeviceIids[]`。后续维护建议把驱动 ABI、界面本地化与其他功能修复拆成独立提交。本次加固单独成一次提交，不改写已有历史。
 
 本次修订后重新编译了驱动与安装包，`dist/`、SHA-256 清单与 Release 资产同步更新；USB 震动、输入与 XInput 翻译链路未改动。
+
+## 10. 同日第二次更新：未知系统自动适配（2026-11-10）
+
+用户反馈「未知 build 直接停用震动」实用性不足，于是把第 9 节的失败关闭策略改为**默认开启的分层自动适配**。核心原则：不再凭一个 IID 特征就调用 vtable，而是让候选先通过可验证的关卡。
+
+| 改动 | 内容 |
+| --- | --- |
+| 解析顺序 | 已验证 IID → 缓存 IID → 运行时候选；22631 / 26200 命中已验证 IID 时代码路径与官方 1.0.2 一致，未引入 SEH、注册表或策略判断 |
+| 新增 `driver/iid-policy.h` | 纯策略头：参数化接口 / GUID 变体位筛选、排除标准与已验证 IID、黑名单去重与滚动、诊断位编码；由新增的 `tests/iid-policy-tests.cpp`（26 项断言）覆盖，并接入 `tests/run.ps1` |
+| vtable 静态校验 | 槽 6–14 全部指向已提交的可执行内存、至少 5 个不同实现；按与激活工厂同映像的方法数排序，最多尝试 3 个候选 |
+| 语义验证 | 用完整 `Open()` 链路（HID 服务 UUID、恰好 1 个服务、Report Reference 5/2）作为验证器，猜错不会进入写入阶段 |
+| SEH 隔离 | `GuardedTryOpen()` 把访问违例转成 HRESULT，避免击穿 WUDFHost.exe |
+| 熔断与缓存 | `HKCU\SOFTWARE\StadiaLink\PrivateGatt` 下 `Verified` / `Blacklist`（最多 4 个）/ `Attempt`；宿主崩溃导致 `Attempt` 残留时，下次启动自动拉黑该 IID，不会崩溃循环；注册表不可写时静默降级 |
+| 开关 | `STADIALINK_AUTO_IID=0` 构建严格失败关闭版（阶段 `11`）；默认不设即为自动适配 |
+| 诊断 | 阶段 `12` = 候选全部未通过；`IidIndex` `0x40` = 缓存、`0x80+i` = 本次验证通过；第 62 字节低 6 位为候选数、`0x40` 缓存标志、`0x80` 崩溃拉黑标志 |
+| 文档 | `docs/COMPATIBILITY.md` 重写为矩阵 + 自适应策略 + 重置方法；6 语 README 与探针脚本同步；`tests/iid-policy-tests.cpp` 新增 |
+
+**验证**：精简 WDK 下驱动与三个 exe 重编译成功（仅 3 类既有 WDK 头警告）；`STADIALINK_AUTO_IID=1/0` 两种策略均零警告编译通过；策略单测 26 项全过；配置翻译 4,864,527 次检查与应用模型自测 PASS。本机 22631 命中硬编码 IID，自动适配路径不会触发，**该路径暂无实机覆盖**；实时震动滑块测试因用户托盘实例占用单实例锁未重跑。
+
+**限制**：自动适配解决 IID 变化，不解决 vtable 方法顺序变化；Windows 10 / 22H2 / 24H2 仍无实机验证数据，不承诺成功。完整机制与实机验证步骤见 [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)。

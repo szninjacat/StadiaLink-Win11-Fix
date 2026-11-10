@@ -2,15 +2,16 @@
 """Probe the private WinRT GATT activation factory on the running Windows build.
 
 StadiaLink's driver/private-gatt.cpp pins two ABI-verified device interface
-IIDs (Windows 26200 and 22631) and fails closed on any other build. This tool
-asks the real activation factory which interfaces it implements on this
-machine, so a new build can be investigated without guessing the private ABI.
+IIDs (Windows 26200 and 22631). On any other build it validates runtime
+candidates from the CreateAsync object's own GetIids() list, then caches the
+winner. This tool asks the activation factory which interfaces it implements
+on this machine, so a new build can be investigated without guessing.
 
 Read-only: it activates the factory and calls IInspectable::GetIids only.
 It never connects to a controller and never writes a GATT characteristic.
-The driver no longer auto-uses a discovered IID: a 0x5xxx Data3 value is only
-a candidate, never proof that vtable slots 11/14 still mean the same thing.
-See docs/COMPATIBILITY.md for the validation procedure.
+A 0x5xxx Data3 value is only a candidate: the driver additionally checks the
+vtable, runs the whole HID GATT chain, isolates the call with SEH and
+blacklists any IID that crashes the host. See docs/COMPATIBILITY.md.
 With --deep it also inspects the factory vtable; it stops before calling into
 a private interface when this process only received combase's generic
 activation-factory proxy (the real facet is available inside the UMDF host).
@@ -353,13 +354,14 @@ def main():
 
     ro.WindowsDeleteString(hs)
     print()
-    print("Only the VERIFIED device IIDs above are used automatically by the driver.")
+    print("The two VERIFIED device IIDs are tried first on every build.")
     print("Device IIDs belong to the object returned by CreateAsync, not to the")
     print("activation factory, so E_NOINTERFACE for them above is expected.")
-    print("A 0x5xxx parameterized IID is a candidate, NOT proof of the")
-    print("GattClientDevice device facet: vtable slots 11/14 must be validated on")
-    print("a real machine. On an unknown build the driver counts candidates")
-    print("(status report byte 62), reports stage 11 and fails closed.")
+    print("A 0x5xxx parameterized IID is only a candidate. On an unknown build")
+    print("the driver ranks such candidates, validates the vtable and the whole")
+    print("HID GATT chain under an SEH guard, then caches the winner for later")
+    print("boots. Candidates that fail are blacklisted; status report byte 62")
+    print("shows the candidate count plus crash/cache flags.")
     print("See docs/COMPATIBILITY.md before adding an IID to DeviceIids[].")
     return 0
 

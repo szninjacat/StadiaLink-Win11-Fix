@@ -127,7 +127,7 @@ Solicita permisos de administrador, elimina los paquetes de este controlador y d
 
 ## 🤝 Compatibilidad, créditos y licencia
 
-El transporte de vibración Bluetooth utiliza interfaces privadas de Windows, verificadas en equipos reales solo en Windows 11 builds **26200** y **22631**. En otras versiones -incluido Windows 10- solo se garantiza la instalabilidad del framework UMDF 2.31; la interfaz GATT privada no está verificada y no se garantiza su funcionamiento. Consulta la matriz y el procedimiento de validación en [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md). Las actualizaciones del sistema también pueden cambiar estas interfaces.
+El transporte de vibración Bluetooth utiliza interfaces privadas de Windows, verificadas en equipos reales solo en Windows 11 builds **26200** y **22631**. En otras versiones -incluido Windows 10- solo se garantiza la instalabilidad del framework UMDF 2.31; la interfaz GATT privada no está verificada y no se garantiza su funcionamiento. Consulta la matriz y el procedimiento de validación en [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md). En otras versiones, el controlador valida y almacena automáticamente un IID descubierto en tiempo de ejecución (comprobación de vtable, validación completa de la cadena GATT y cortocircuito ante fallos); el éxito no está garantizado. Las actualizaciones del sistema también pueden cambiar estas interfaces.
 
 GPL-3.0. El controlador parte de [aisk/WinStadia](https://github.com/aisk/WinStadia). Consulta [LICENSE](LICENSE) y [UPSTREAM-README.md](UPSTREAM-README.md). Proyecto independiente de Google y Microsoft.
 

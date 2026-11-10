@@ -48,21 +48,22 @@ Copy-Item "$wdk\Include\$sdkVersion\km\hidport.h" $obj
 
 $minor = $umdfVersion.Split('.')[1]
 $sources = 'winstadia.c', 'stadia.c', 'settings.c', 'usb.c', 'bluetooth.c' | ForEach-Object { "$PSScriptRoot\$_" }
-# Normal builds never call an ABI-unverified IID. Opt in only for a throwaway
-# test build on a new Windows version (see docs/COMPATIBILITY.md).
-$unverifiedIidDefine = @()
-if ($env:STADIALINK_ALLOW_UNVERIFIED_IID -eq '1') {
-    $unverifiedIidDefine = @('/DSTADIALINK_ALLOW_UNVERIFIED_IID=1')
-    Write-Host 'WARNING: unverified IID auto-selection enabled (test builds only)'
+# Auto-adaptation is ON by default: unknown Windows builds get a validated
+# runtime IID instead of losing Bluetooth rumble. Set STADIALINK_AUTO_IID=0 to
+# build the strict fail-closed variant (see docs/COMPATIBILITY.md).
+$autoIidDefine = @()
+if ($env:STADIALINK_AUTO_IID -eq '0') {
+    $autoIidDefine = @('/DSTADIALINK_AUTO_IID=0')
+    Write-Host 'NOTE: strict fail-closed IID policy (auto-adaptation disabled)'
 }
-& cl /nologo /W4 /O2 /MT /EHsc /std:c++17 /c /D UNICODE /D _UNICODE /D _WIN32_WINNT=0x0A00 @unverifiedIidDefine /Fo"$obj\private-gatt.obj" "$PSScriptRoot\private-gatt.cpp"
+& cl /nologo /W4 /O2 /MT /EHsc /std:c++17 /c /D UNICODE /D _UNICODE /D _WIN32_WINNT=0x0A00 @autoIidDefine /Fo"$obj\private-gatt.obj" "$PSScriptRoot\private-gatt.cpp"
 if ($LASTEXITCODE) { throw 'private GATT probe compiling failed' }
 & cl /nologo /W4 /O2 /MT /LD /std:c17 `
     /D UMDF_VERSION_MAJOR=2 /D UMDF_VERSION_MINOR=$minor /D UMDF_USING_NTSTATUS `
     /D UNICODE /D _UNICODE /D _WIN32_WINNT=0x0A00 `
     /I "$wdk\Include\wdf\umdf\$umdfVersion" /I $obj `
     /Fo"$obj\\" /Fe"$pkg\winstadia.dll" $sources `
-    /link /NOIMPLIB /NOEXP "$obj\private-gatt.obj" "$wdk\Lib\wdf\umdf\x64\$umdfVersion\WdfDriverStubUm.lib" ntdll.lib runtimeobject.lib ole32.lib
+    /link /NOIMPLIB /NOEXP "$obj\private-gatt.obj" "$wdk\Lib\wdf\umdf\x64\$umdfVersion\WdfDriverStubUm.lib" ntdll.lib runtimeobject.lib ole32.lib advapi32.lib
 if ($LASTEXITCODE) { throw 'compiling failed' }
 Copy-Item "$PSScriptRoot\winstadia.inf" $pkg
 # Windows only replaces an installed package when DriverVer is newer, so every

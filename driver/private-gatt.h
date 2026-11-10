@@ -18,7 +18,8 @@ enum {
     STADIA_GATT_STAGE_DISCOVERY       = 8,  // characteristic discovery object
     STADIA_GATT_STAGE_CHARACTERISTICS = 9,  // enumerate characteristics
     STADIA_GATT_STAGE_REPORT_REF      = 10, // read Report Reference descriptor
-    STADIA_GATT_STAGE_IID_UNVERIFIED = 11, // no verified IID for this build; fail closed
+    STADIA_GATT_STAGE_IID_UNVERIFIED = 11, // no verified IID, auto-adapt disabled/unusable
+    STADIA_GATT_STAGE_AUTO_FAILED    = 12, // auto-adapt candidates all rejected
     STADIA_GATT_STAGE_READY          = 0x7F
 };
 
@@ -33,9 +34,12 @@ enum {
     STADIA_GATT_ASYNC_TIMEOUT = 5
 };
 
-// IidIndex: 1..N = a known per-build IID, >=0x80 = discovered at runtime
-// (only possible in a build with STADIALINK_ALLOW_UNVERIFIED_IID=1),
-// 0 = not resolved yet.
+// IidIndex: 1..N = a hardware-verified hard-coded IID, 0x40 = an IID cached
+// after passing full validation on an earlier boot, 0x80+i = an IID validated
+// during this session from GetIids(), 0 = not resolved yet.
+// CandidateCount: low 6 bits = plausible 0x5xxx candidates seen on this build;
+// 0x40 = a cached IID was tried, 0x80 = a previous attempt crashed the host
+// and its IID was blacklisted. See driver/iid-policy.h.
 typedef struct _STADIA_GATT_DIAGNOSTICS {
     HRESULT OpenStatus;
     HRESULT WriteStatus;
@@ -46,7 +50,7 @@ typedef struct _STADIA_GATT_DIAGNOSTICS {
     UCHAR ReportType;
     ULONG Stage;
     ULONG IidIndex;
-    ULONG CandidateCount; // unverified 0x5xxx IIDs seen on this build
+    ULONG CandidateCount; // plausible IIDs + state flags, see iid-policy.h
     ULONG AsyncStage;     // last Await() failure point, see STADIA_GATT_ASYNC_*
 } STADIA_GATT_DIAGNOSTICS;
 
