@@ -5,7 +5,7 @@
   <p>Stadia controller configuration for Windows 11 x64 · Version 1.0.2</p>
   <p><a href="https://github.com/minysito/StadiaLink/releases/latest"><strong>⬇ Download</strong></a> · <a href="https://github.com/minysito/StadiaLink/issues">Report an issue</a> · <a href="LICENSE">GPL-3.0</a></p>
   <p>🪟 Windows 11 x64 &nbsp; · &nbsp; 🎮 XInput &nbsp; · &nbsp; 🔗 USB + Bluetooth</p>
-  <p><a href="README.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <strong><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</strong> &nbsp; | &nbsp; <a href="README.fr.md"><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</a> &nbsp; | &nbsp; <a href="README.de.md"><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</a> &nbsp; | &nbsp; <a href="README.zh-CN.md">🇨🇳 简体中文</a></p>
+  <p><a href="README.es.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <strong><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</strong> &nbsp; | &nbsp; <a href="README.fr.md"><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</a> &nbsp; | &nbsp; <a href="README.de.md"><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</a> &nbsp; | &nbsp; <a href="README.zh-CN.md">🇨🇳 简体中文</a></p>
 </div>
 
 > **Hotfix branch (2026-11-09)** — fixes Bluetooth rumble on Windows 11 23H2, adds Simplified Chinese as the default UI language, and makes the window close button (and Alt+F4) minimize to the notification area instead of exiting. See [RELEASE_NOTES.md](RELEASE_NOTES.md) and [README.zh-CN.md](README.zh-CN.md).

@@ -24,3 +24,7 @@ LICENSE    text
 # Release output must stay byte-for-byte identical: the INF/config/hash files
 # under dist/ use CRLF and are covered by SHA256SUMS.txt.
 dist/** -text
+
+# Patches must keep their original CRLF bytes so they still apply cleanly
+# to the upstream CRLF baseline (bea80f3).
+patches/** -text

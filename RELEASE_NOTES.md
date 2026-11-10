@@ -96,7 +96,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 
 ```
 .gitignore  .gitattributes  LICENSE
-README.md  README.en.md  README.fr.md  README.de.md  README.zh-CN.md
+README.md（默认·简体中文）  README.zh-CN.md  README.es.md  README.en.md  README.fr.md  README.de.md
 UPSTREAM-README.md  CHANGELOG.md  RELEASE_NOTES.md
 app/        应用源码、资源、构建脚本
 driver/     UMDF 驱动源码、INF、安装与状态脚本

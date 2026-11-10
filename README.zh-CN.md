@@ -5,7 +5,7 @@
   <p>Windows 11 x64 上的 Stadia 手柄配置工具 · 版本 1.0.2</p>
   <p><a href="https://github.com/minysito/StadiaLink/releases/latest"><strong>⬇ 下载</strong></a> · <a href="https://github.com/minysito/StadiaLink/issues">反馈问题</a> · <a href="LICENSE">GPL-3.0</a></p>
   <p>🪟 Windows 11 x64 &nbsp; · &nbsp; 🎮 XInput &nbsp; · &nbsp; 🔗 USB + 蓝牙</p>
-  <p><a href="README.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <a href="README.en.md"><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</a> &nbsp; | &nbsp; <a href="README.fr.md"><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</a> &nbsp; | &nbsp; <a href="README.de.md"><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</a> &nbsp; | &nbsp; <strong>🇨🇳 简体中文</strong></p>
+  <p><a href="README.es.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <a href="README.en.md"><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</a> &nbsp; | &nbsp; <a href="README.fr.md"><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</a> &nbsp; | &nbsp; <a href="README.de.md"><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</a> &nbsp; | &nbsp; <strong>🇨🇳 简体中文</strong></p>
 </div>
 
 > **简体中文修复分支（2026-11-09）**：本分支修复 Windows 11 23H2 上蓝牙震动失效，将界面默认语言改为简体中文，并修复窗口「×」直接退出程序的问题。完整说明见 [RELEASE_NOTES.md](RELEASE_NOTES.md)、[CHANGELOG.md](CHANGELOG.md) 与 [docs/CHANGES.md](docs/CHANGES.md)；编译产物在 [dist/](dist/)。

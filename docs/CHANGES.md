@@ -44,6 +44,7 @@ git apply patches/v1.0.2-hotfix.patch
 - 新增 `.gitignore`（含"dist/ 有意纳入版本控制"说明）、`.gitattributes`
 - 新增 `README.zh-CN.md`：完整的简体中文文档，章节与其他 4 语 README 一致，并增加本分支特有的「蓝牙震动兼容性」「本分支交付内容」「构建开关」等说明；「使用」一节补充了 × / Alt+F4 驻留托盘与托盘**退出**的行为
 - `README.md` 顶部新增简体中文分支入口（指向中文 README 与版本说明）；`README.md` / `.en` / `.fr` / `.de` 的语言导航行均加入「🇨🇳 简体中文」链接；`LICENSE`、`UPSTREAM-README.md` 原样保留
+- 默认 `README.md` 改为简体中文（与 `README.zh-CN.md` 一致）；原西班牙语版另存为 `README.es.md`；6 份 README 的语言导航同步更新；仓库 About 简介改为简体中文
 - `CHANGELOG.md` 新增 `Unreleased — 1.0.2 hotfix (2026-11-09)` 条目（含关闭按钮修复），历史条目不变；`RELEASE_NOTES.md` 增加「关闭按钮行为」小节并更新产物哈希
 - 新增 `RELEASE_NOTES.md`（中文版本说明）、本文件、`patches/`、`dist/`
 

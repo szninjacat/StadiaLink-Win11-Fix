@@ -8,6 +8,7 @@ Full notes (简体中文): [RELEASE_NOTES.md](RELEASE_NOTES.md) · Per-file chan
 - Added private-GATT open-stage and IID-selection diagnostics to the status feature report and `driver/status.ps1`.
 - Added Simplified Chinese as the fifth UI language and made it the default. The full 289-entry catalog was translated and the delete-profile dialog punctuation was fixed.
 - Added `README.zh-CN.md` with full Simplified Chinese documentation and cross-linked the language navigation in all five READMEs.
+- Made Simplified Chinese the default repository README (`README.md`); kept the Spanish README as `README.es.md` and updated the language navigation in all six READMEs.
 - Added opt-in build switches `STADIALINK_VC_ENV_READY` and `STADIALINK_SKIP_STAGE_CLEANUP` for hosts/CI that cannot run `vcvars64.bat` or remove staging directories. Default behaviour is unchanged.
 - Fixed the window close button exiting the app: the × button and Alt+F4 now minimize to the notification area, while the tray exit item and automated tests terminate the process through `ForceClose()`. Draft-behaviour tests now cover the close button, system close and tray restore.
 - Shipped rebuilt prebuilt binaries and SHA-256 checksums in `dist/` (including the close-button fix).
