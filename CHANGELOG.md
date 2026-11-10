@@ -1,8 +1,10 @@
 # Changelog
 
-## Unreleased — 1.0.2 hotfix (2026-11-09)
+## 2.0.0 — independent fork version line (2026-11-11)
 
 Full notes (简体中文): [RELEASE_NOTES.md](RELEASE_NOTES.md) · Per-file changes: [docs/CHANGES.md](docs/CHANGES.md) · Code diff: [patches/v1.0.2-hotfix.patch](patches/v1.0.2-hotfix.patch).
+
+- **Independent release channel (2026-11-11)**: the app is version 2.0.0 and checks only `szninjacat/StadiaLink-Win11-Fix` releases with a `v2.x`-or-newer tag, so upstream `minysito/StadiaLink` 1.x releases never trigger an update prompt. Assembly/file versions, manifest, uninstall registry entry, UI labels and the source-package name are all 2.0.0; README download buttons now point at `/releases/latest`. Users of the older 1.0.2 hotfix must reinstall the full Setup.exe once.
 
 - Fixed Bluetooth rumble failing with `E_NOINTERFACE` (`0x80004002`) on Windows 11 23H2 (build 22631). The private `GattClientDevice` device-interface IID differs from build 26200; the driver now tries both known IIDs and falls back to `IInspectable::GetIids` on unknown builds.
 - Added private-GATT open-stage and IID-selection diagnostics to the status feature report and `driver/status.ps1`.

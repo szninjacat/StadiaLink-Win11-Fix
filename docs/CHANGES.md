@@ -2,7 +2,7 @@
 
 - **基线提交**：`bea80f3` — *Correct release version to 1.0.2*
 - **比较范围**：`app/`、`driver/`、`tests/`
-- **机器可读补丁**：[../patches/v1.0.2-hotfix.patch](../patches/v1.0.2-hotfix.patch)，17 个文本文件、约 207 KB，由真实 `git diff --cached --binary` 导出（含新增文件），无二进制块
+- **机器可读补丁**：[../patches/v1.0.2-hotfix.patch](../patches/v1.0.2-hotfix.patch)，21 个文本文件、约 219 KB（17 个修改 + 4 个新增），由真实 `git diff --cached --binary` 导出（含新增文件），无二进制块
 - **版本说明**：[../RELEASE_NOTES.md](../RELEASE_NOTES.md)
 
 本目录中的 `app/`、`driver/`、`tests/` **已经是改动后的源码**，无需再应用补丁。补丁用于代码审查，或把改动移植到一份干净的 1.0.2 checkout：
@@ -12,7 +12,7 @@ git apply --check patches/v1.0.2-hotfix.patch
 git apply patches/v1.0.2-hotfix.patch
 ```
 
-## 一、修改的既有文件（13 个）
+## 一、修改的既有文件（17 个）
 
 | 文件 | 改动摘要 |
 | --- | --- |
@@ -29,6 +29,8 @@ git apply patches/v1.0.2-hotfix.patch
 | `app/build-native.ps1` | 同上 |
 | `tests/run.ps1` | 同上 |
 | `app/package.ps1` | 两处暂存目录清理受 `STADIALINK_SKIP_STAGE_CLEANUP=1` 控制；默认行为不变 |
+
+上表列出初版补丁的 13 个文件；另有 4 个既有文件是 2026-11-11 独立版本线新增修改的（`app/InstallerActions.cs`、`app/UpdateChecker.cs`、`app/USO.md`、`app/app.manifest`），逐项说明见第八节，合计 17 个修改文件。
 
 ## 二、新增文件（4 个，已包含在补丁中）
 
@@ -54,7 +56,7 @@ git apply patches/v1.0.2-hotfix.patch
 
 ## 四、未改动的部分
 
-USB 震动路径、蓝牙输入与 XInput 翻译、配置模型与持久化、电池读取、托盘图标与电量显示、开机自启、更新检查、驱动签名与安装流程、INF 的设备匹配 ID、报告长度与既有字段布局（新增诊断仅使用原本空闲的第 62、63 字节）。仅「关闭 / 恢复」的窗口行为按第一节调整。所有新增构建开关默认关闭，原有 `.\app\package.ps1 -Driver` 用法不变。
+USB 震动路径、蓝牙输入与 XInput 翻译、配置模型与持久化、电池读取、托盘图标与电量显示、开机自启、驱动签名与安装流程、INF 的设备匹配 ID、报告长度与既有字段布局（新增诊断仅使用原本空闲的第 62、63 字节）。仅「关闭 / 恢复」的窗口行为按第一节调整。**更新检查**在 2026-11-11 独立版本线中已改为只指向本仓库（见第八节），此处「未改动」仅指 1.0.2 修复版阶段。所有新增构建开关默认关闭，原有 `.\app\package.ps1 -Driver` 用法不变。
 
 ## 五、明确排除的内容
 
@@ -72,7 +74,7 @@ USB 震动路径、蓝牙输入与 XInput 翻译、配置模型与持久化、�
 | `release/SHA256.txt`、`release/SHA256SUMS.txt` | 由 `dist/` 下重新生成的两份清单替代（只覆盖实际分发的文件） |
 | `driver/out/` 中间产物、`*.obj`、`*.pdb`、`*.log`、截图、DriverStore 备份 | 构建中间物与本机回滚材料 |
 
-`dist/driver/` 中的 `winstadia.dll` / `winstadia.inf` 是**唯一**保留的 `driver/out/pkg` 产物（2026-11-10 第二次重新编译，含审查加固与分层自动适配，双 IID 未变；`DriverVer=11/10/2026,19.30.26.699`）。
+`dist/driver/` 中的 `winstadia.dll` / `winstadia.inf` 是**唯一**保留的 `driver/out/pkg` 产物（2026-11-10 第二次重新编译，含审查加固与分层自动适配，双 IID 未变；`DriverVer=11/10/2026,19.30.26.699`）。2026-11-11 仅重编了应用侧的三个 exe 与 `StadiaDevice.dll`，驱动文件保持原样。
 
 ## 六、代码审查后的加固（2026-11-10）
 
@@ -85,11 +87,11 @@ USB 震动路径、蓝牙输入与 XInput 翻译、配置模型与持久化、�
 | `driver/build.ps1` | 测试构建专用编译开关，默认关闭 |
 | `tests/probe-private-gatt.py` | 标准 GUID 输出、IID 分类标注、增加 22631 已验证 IID 探测项、末尾说明不误导 |
 | 6 语 README + 模板 | 重写中文「蓝牙震动兼容性」章节以匹配失败关闭行为；统一 6 语兼容性边界；修正构建目录名 |
-| `docs/COMPATIBILITY.md`（新增，文档类，不进补丁） | 兼容性矩阵、失败关闭说明、诊断字节表、新增 IID 实机验证流程、提交拆分约定 |
+| `docs/COMPATIBILITY.md`（新增，文档类，不进补丁） | 兼容性矩阵、当时的失败关闭说明（已被第七节取代）、诊断字节表、新增 IID 实机验证流程、提交拆分约定 |
 
 **未验证版本**：Windows 10 22H2 / 11 22H2 / 11 24H2 均无实机数据，不进入 `DeviceIids[]`。本次没有 Windows 10 的 IID 可补，下一步应先做只读探测，而不是猜一个 IID 写进白名单。
 
-**行为影响**：22631 / 26200 上仍按原来两个已验证 IID 打开，震动路径完全不变；只有未知 build 从「可能猜错并调用」变为「明确停用并报告」。
+**行为影响**（当天第一次加固时的状态，已被第七节的分层自动适配取代）：22631 / 26200 上仍按原来两个已验证 IID 打开，震动路径完全不变；未知 build 当时从「可能猜错并调用」变为「明确停用并报告」。第七节之后改为默认开启的可验证自动适配。
 
 ## 七、同日第二次更新：分层自动适配（2026-11-10）
 
@@ -106,4 +108,17 @@ USB 震动路径、蓝牙输入与 XInput 翻译、配置模型与持久化、�
 | `docs/COMPATIBILITY.md` | 重写：矩阵、五层验证、降级与诚实边界、诊断字节、手动补 IID、缓存/黑名单重置 |
 | `RELEASE_NOTES.md` / `CHANGELOG.md` / 本节 | 追加第 10 节 / 新条目 / 本节 |
 
-补丁现为 **17 个文本文件、约 207 KB**（13 个修改 + 4 个新增）。`dist/` 已全部重编译，哈希清单同步更新。
+补丁（截至 v2.0.0 的最终状态）为 **21 个文本文件、224,509 B ≈ 219 KB**（17 个修改 + 4 个新增）。`dist/` 已重编译，哈希清单同步更新；2026-11-11 独立版本线又重编了三个 exe 与 `StadiaDevice.dll`，驱动 DLL / INF 未变。
+
+## 八、独立版本线（2026-11-11）
+
+| 文件 | 改动摘要 |
+| --- | --- |
+| `app/UpdateChecker.cs` | 更新源由上游改为本仓库 `/releases/latest`；`Parse()` 双重校验页面与 API URL 的仓库归属，要求 tag 为 `v` 前缀纯版本号且 Major ≥ 2；`Verify()` 增加拒绝上游/1.x/预览/draft 的断言 |
+| `app/App.cs` / `app/Setup.cs` | `AssemblyVersion` / `AssemblyFileVersion` 由 `1.0.2.0` 改为 `2.0.0.0` |
+| `app/app.manifest` | `assemblyIdentity version` 改为 `2.0.0.0` |
+| `app/InstallerActions.cs` | `DisplayVersion` 动态读取程序集版本；`DisplayName` / `Publisher` 标识本分支 |
+| `app/MainWindow.cs` | 侧栏与关于页版本显示动态化并标注 `Win11-Fix`；更新通知键改为 `Win11Fix.UpdateNotified` |
+| `app/package.ps1` | 源码包文件名改为 `StadiaLink-2.0.0-source.zip` |
+| `app/USO.md` | 标题与更新说明改为 2.0.0 / 本分支通道 |
+| 6 语 README | 版本徽标 2.0.0 (Win11-Fix)、下载链接改为 `/releases/latest`、补充独立版本说明 |

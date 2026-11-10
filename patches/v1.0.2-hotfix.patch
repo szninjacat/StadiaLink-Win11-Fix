@@ -1,7 +1,18 @@
 diff --git a/app/App.cs b/app/App.cs
-index d322c88..5a3397c 100644
+index d322c88..6a46543 100644
 --- a/app/App.cs
 +++ b/app/App.cs
+@@ -11,8 +11,8 @@ using System.Reflection;
+ [assembly:AssemblyDescription("Native Stadia controller settings")]
+ [assembly:AssemblyCompany("StadiaLink")]
+ [assembly:AssemblyProduct("StadiaLink")]
+-[assembly:AssemblyVersion("1.0.2.0")]
+-[assembly:AssemblyFileVersion("1.0.2.0")]
++[assembly:AssemblyVersion("2.0.0.0")]
++[assembly:AssemblyFileVersion("2.0.0.0")]
+ 
+ namespace StadiaStudio {
+     public static class Entry {
 @@ -29,26 +29,26 @@ namespace StadiaStudio {
                      if(!acquired){if(!args.Contains("--tray"))MessageBox.Show(I18n.T("StadiaLink ya está abierto."),"StadiaLink");return 0;}
                      Application app=new Application();app.DispatcherUnhandledException+=(s,e)=>{string log=Log(e.Exception);MessageBox.Show(I18n.T("Se produjo un error. Detalles en ")+log,"StadiaLink");e.Handled=true;};
@@ -76,8 +87,21 @@ index e453694..0082674 100644
    public static string Error(Exception error){string text=error.Message;return Code=="es"||catalog.ContainsKey(text)||phrases.IsMatch(text)?T(text):T("No se pudo completar la operación.");}
    public static string ProfileName(string name){return name=="Estándar"?T(name):name;}
    public static void TranslateTree(DependencyObject root){if(root==null||(bool)root.GetValue(RawProperty))return;FrameworkElement element=root as FrameworkElement;if(element!=null&&element.ToolTip is string){string tip=(string)element.GetValue(TooltipSourceProperty);if(tip==null){tip=(string)element.ToolTip;element.SetValue(TooltipSourceProperty,tip);}element.ToolTip=T(tip);}TextBlock text=root as TextBlock;ContentControl control=root as ContentControl;if(text!=null){string source=(string)text.GetValue(SourceProperty);if(source==null){source=text.Text;Remember(text,source);}text.Text=T(source);}else if(control!=null&&control.Content is string){string source=(string)control.GetValue(SourceProperty);if(source==null){source=(string)control.Content;Remember(control,source);}control.Content=T(source);}foreach(object child in LogicalTreeHelper.GetChildren(root))if(child is DependencyObject)TranslateTree((DependencyObject)child);}
+diff --git a/app/InstallerActions.cs b/app/InstallerActions.cs
+index 91c1c05..69c8208 100644
+--- a/app/InstallerActions.cs
++++ b/app/InstallerActions.cs
+@@ -34,7 +34,7 @@ namespace StadiaStudio {
+                 shortcut.GetType().InvokeMember("Save",BindingFlags.InvokeMethod,null,shortcut,null);
+             }finally{if(shortcut!=null)Marshal.FinalReleaseComObject(shortcut);Marshal.FinalReleaseComObject(shell);}
+             using(RegistryKey key=Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\StadiaStudio")) {
+-                key.SetValue("DisplayName","StadiaLink");key.SetValue("DisplayVersion","1.0.2");key.SetValue("Publisher","StadiaLink · WinStadia GPLv3");
++                key.SetValue("DisplayName","StadiaLink Win11 Fix");key.SetValue("DisplayVersion",Assembly.GetExecutingAssembly().GetName().Version.ToString(3));key.SetValue("Publisher","szninjacat/StadiaLink-Win11-Fix");
+                 key.SetValue("InstallLocation",InstallDirectory);key.SetValue("DisplayIcon",Path.Combine(InstallDirectory,"StadiaLink.exe"));
+                 key.SetValue("UninstallString","\""+Path.Combine(InstallDirectory,"StadiaLink.Setup.exe")+"\" /uninstall");
+                 key.SetValue("NoModify",1,RegistryValueKind.DWord);key.SetValue("NoRepair",1,RegistryValueKind.DWord);
 diff --git a/app/MainWindow.cs b/app/MainWindow.cs
-index a4d0fed..c8e35e7 100644
+index a4d0fed..340be1a 100644
 --- a/app/MainWindow.cs
 +++ b/app/MainWindow.cs
 @@ -44,7 +44,7 @@ namespace StadiaStudio {
@@ -89,7 +113,23 @@ index a4d0fed..c8e35e7 100644
          readonly TextBlock batteryText=Ui.T("Batería: —",12,Ui.Muted);
          ComboBox actionPicker,keyPicker;StackPanel shortcutOptions;TextBlock actionHint;
          readonly Dictionary<int,CheckBox> modifierChecks=new Dictionary<int,CheckBox>();
-@@ -93,7 +93,7 @@ namespace StadiaStudio {
+@@ -63,7 +63,7 @@ namespace StadiaStudio {
+                 newRelease=UpdateChecker.IsNewer(release,UpdateChecker.Current)?release:null;
+                 updateStatus=newRelease==null?"La aplicación está actualizada.":"Nueva versión disponible: "+newRelease.Tag;
+                 if(newRelease!=null&&tray!=null){using(var key=Registry.CurrentUser.CreateSubKey(@"Software\StadiaStudio")){
+-                    if(manual||(string)key.GetValue("UpdateNotified","")!=newRelease.Tag){tray.Notify(new DeviceNotice("Actualización disponible",updateStatus));key.SetValue("UpdateNotified",newRelease.Tag);}
++                    if(manual||(string)key.GetValue("Win11Fix.UpdateNotified","")!=newRelease.Tag){tray.Notify(new DeviceNotice("Actualización disponible",updateStatus));key.SetValue("Win11Fix.UpdateNotified",newRelease.Tag);}
+                 }}
+             }catch(Exception ex){Entry.Log(ex);if(!closed)updateStatus="No se pudieron comprobar las actualizaciones.";}
+             finally{checkingUpdates=false;if(!closed)RefreshUpdateStatus();}
+@@ -87,13 +87,13 @@ namespace StadiaStudio {
+                 string target=name;Button b=Ui.Button(name,()=>Navigate(target,true));b.HorizontalContentAlignment=HorizontalAlignment.Left;b.Margin=new Thickness(0,0,0,8);b.BorderThickness=new Thickness(0);
+                 navigation[name]=b;nav.Children.Add(b);
+             }
+-            StackPanel sideFoot=new StackPanel();sideFoot.Children.Add(connection);sideFoot.Children.Add(Ui.Gap(8));sideFoot.Children.Add(deviceText);sideFoot.Children.Add(Ui.Gap(8));sideFoot.Children.Add(batteryText);sideFoot.Children.Add(Ui.Gap(20));sideFoot.Children.Add(Ui.T("StadiaLink 1.0.2",10,Ui.Muted));Grid.SetRow(sideFoot,2);side.Children.Add(sideFoot);sidebar.Child=side;shell.Children.Add(sidebar);
++            StackPanel sideFoot=new StackPanel();sideFoot.Children.Add(connection);sideFoot.Children.Add(Ui.Gap(8));sideFoot.Children.Add(deviceText);sideFoot.Children.Add(Ui.Gap(8));sideFoot.Children.Add(batteryText);sideFoot.Children.Add(Ui.Gap(20));sideFoot.Children.Add(Ui.T("StadiaLink "+UpdateChecker.Current.ToString(3)+" · Win11-Fix",10,Ui.Muted));Grid.SetRow(sideFoot,2);side.Children.Add(sideFoot);sidebar.Child=side;shell.Children.Add(sidebar);
+             Grid main=new Grid{Margin=new Thickness(30,0,30,0)};Grid.SetColumn(main,1);shell.Children.Add(main);
+             main.RowDefinitions.Add(new RowDefinition{Height=new GridLength(34)});main.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});main.RowDefinitions.Add(new RowDefinition());main.RowDefinitions.Add(new RowDefinition{Height=new GridLength(30)});
              Grid chrome=new Grid();chrome.MouseLeftButtonDown+=(s,e)=>{if(e.ClickCount==2)WindowState=WindowState==WindowState.Maximized?WindowState.Normal:WindowState.Maximized;else if(e.LeftButton==MouseButtonState.Pressed)DragMove();};
              chrome.Children.Add(Ui.T("CONFIGURACIÓN DEL MANDO",10,Ui.Muted,true));((TextBlock)chrome.Children[0]).VerticalAlignment=VerticalAlignment.Center;
              StackPanel windowButtons=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right};
@@ -127,6 +167,15 @@ index a4d0fed..c8e35e7 100644
          void ImportProfile(){OpenFileDialog d=new OpenFileDialog{Filter=I18n.T("Perfil StadiaLink (*.json)")+"|*.json"};if(d.ShowDialog(this)!=true)return;RunSync(()=>{FileInfo f=new FileInfo(d.FileName);if(f.Length>65536)throw new InvalidDataException("Archivo demasiado grande.");Profile p=Profile.FromJson(File.ReadAllText(d.FileName));p.Name=UniqueName(p.Name);AddProfile(p);});}
          void ExportProfile(){SaveFileDialog d=new SaveFileDialog{Filter=I18n.T("Perfil StadiaLink (*.json)")+"|*.json",FileName="perfil-stadia.json"};if(d.ShowDialog(this)!=true)return;RunSync(()=>{File.WriteAllText(d.FileName,draft.ToJson());I18n.SetText(footer,"Perfil exportado.");});}
          void ResetDraft(){string name=draft.Name;draft=new Profile{Name=name};MarkDirty();Navigate(route);}
+@@ -286,7 +292,7 @@ namespace StadiaStudio {
+             updateDownload=Ui.Button("Ver descargas en GitHub",()=>RunSync(()=>Process.Start(newRelease==null?UpdateChecker.ReleasesUrl:newRelease.Url)));updates.Children.Add(updateDownload);RefreshUpdateStatus();
+             content.Children.Add(Ui.Card(updates));content.Children.Add(Ui.Gap(20));
+             StackPanel about=Section("LINK","Archivos","");
+-            about.Children.Add(Ui.Button("Abrir carpeta de perfiles",()=>RunSync(()=>{Directory.CreateDirectory(ProfileLibrary.DirectoryPath);Process.Start(ProfileLibrary.DirectoryPath);})));about.Children.Add(Ui.Gap(16));about.Children.Add(Ui.T("1.0.2 · GPLv3",12,Ui.Muted));about.Children.Add(Ui.Gap(8));about.Children.Add(Ui.T("",12,Ui.Muted));content.Children.Add(Ui.Card(about));page.Children.Add(new ScrollViewer{Content=content});
++            about.Children.Add(Ui.Button("Abrir carpeta de perfiles",()=>RunSync(()=>{Directory.CreateDirectory(ProfileLibrary.DirectoryPath);Process.Start(ProfileLibrary.DirectoryPath);})));about.Children.Add(Ui.Gap(16));about.Children.Add(Ui.T(UpdateChecker.Current.ToString(3)+" · Win11-Fix · GPLv3",12,Ui.Muted));about.Children.Add(Ui.Gap(8));about.Children.Add(Ui.T("",12,Ui.Muted));content.Children.Add(Ui.Card(about));page.Children.Add(new ScrollViewer{Content=content});
+         }
+         void DeviceChanged(object sender,SelectionChangedEventArgs e){PadInfo info=devicePicker.SelectedItem as PadInfo;if(info==null || (pad!=null && pad.Path==info.Path))return;RunSync(()=>{if(pad!=null)pad.Dispose();pad=new Controller(info.Path);status=null;loadedHardware=null;activeActions=null;desktopActions.Release();batteryLevel=null;nextBattery=DateTime.MinValue;pendingApply=false;nextDiscovery=DateTime.UtcNow.AddSeconds(2);});}
+         async Task RepairDriver(){if(pad!=null){pad.Dispose();pad=null;}string file=System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"driver","install.ps1");if(!File.Exists(file))throw new FileNotFoundException("Abre el instalador de StadiaLink para instalar el controlador.");await InstallerActions.RunDriver(file,false);nextDiscovery=DateTime.MinValue;I18n.SetText(footer,"Controlador instalado. Si Windows lo pide, reconecta el mando o reinicia el equipo.");}
 @@ -411,7 +417,11 @@ namespace StadiaStudio {
                  Navigate("Vibración",true);if(dirty||draft.Actions[0]!=original.Actions[0])throw new Exception("Tab switch did not discard shortcut.");
                  WindowState=WindowState.Minimized;if(IsVisible||ShowInTaskbar||tray==null||!tray.Visible)throw new Exception("Minimize to tray failed.");
@@ -141,9 +190,20 @@ index a4d0fed..c8e35e7 100644
          }
          public void VerifyAnalogPreview() {
 diff --git a/app/Setup.cs b/app/Setup.cs
-index 99f7743..73769ab 100644
+index 99f7743..6e88317 100644
 --- a/app/Setup.cs
 +++ b/app/Setup.cs
+@@ -14,8 +14,8 @@ using Microsoft.Win32;
+ 
+ [assembly:AssemblyTitle("StadiaLink Setup")]
+ [assembly:AssemblyProduct("StadiaLink")]
+-[assembly:AssemblyVersion("1.0.2.0")]
+-[assembly:AssemblyFileVersion("1.0.2.0")]
++[assembly:AssemblyVersion("2.0.0.0")]
++[assembly:AssemblyFileVersion("2.0.0.0")]
+ 
+ namespace StadiaStudio {
+     public static class SetupEntry {
 @@ -28,7 +28,7 @@ namespace StadiaStudio {
              try {
                  if(args.Length==2&&args[0]=="/update-test"){UpdatePackage.Verify(args[1]);return 0;}
@@ -153,6 +213,112 @@ index 99f7743..73769ab 100644
                  if(args.Length==1&&args[0]=="/install-test") window.Loaded+=async(s,e)=>{try{await window.Install();}catch(Exception ex){Log(ex.ToString());Environment.ExitCode=1;}finally{window.Close();}};
                  if(args.Length==2&&args[0]=="/smoke")window.Loaded+=(s,e)=>{DispatcherTimer t=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(500)};t.Tick+=(a,b)=>{t.Stop();window.Snapshot(args[1]);window.Close();};t.Start();};
                  application.Run(window);return Environment.ExitCode;
+diff --git a/app/USO.md b/app/USO.md
+index 5af580a..f4ff455 100644
+--- a/app/USO.md
++++ b/app/USO.md
+@@ -1,4 +1,4 @@
+-# StadiaLink 1.0.2
++# StadiaLink 2.0.0 · Win11-Fix
+ 
+ Selecciona un perfil, ajusta los controles y pulsa Guardar y aplicar. Los cambios del perfil se descartan al cambiar de pestaña sin guardar.
+ 
+@@ -12,4 +12,4 @@ El inicio con Windows se guarda al marcar la casilla. Los atajos necesitan Stadi
+ 
+ Los perfiles se conservan en `%LOCALAPPDATA%/StadiaStudio/profiles.json`; la ruta mantiene compatibilidad con las instalaciones anteriores. La desinstalación conserva los perfiles y permite elegir si retirar el controlador.
+ 
+-La fuerza de vibración se aplica y guarda al mover las barras. Las pruebas usan la misma ganancia que el juego. En Ajustes puedes comprobar nuevas versiones y abrir sus descargas en GitHub; la descarga y la instalación son manuales. El paquete de actualización conserva perfiles y requiere un controlador compatible.
++La fuerza de vibración se aplica y guarda al mover las barras. Las pruebas usan la misma ganancia que el juego. En Ajustes puedes comprobar nuevas versiones de este fork (StadiaLink-Win11-Fix, línea 2.x) y abrir sus descargas en GitHub; nunca se consulta el repositorio original. La descarga y la instalación son manuales. El paquete de actualización conserva perfiles y requiere un controlador compatible.
+diff --git a/app/UpdateChecker.cs b/app/UpdateChecker.cs
+index 3ba1482..e543856 100644
+--- a/app/UpdateChecker.cs
++++ b/app/UpdateChecker.cs
+@@ -10,29 +10,42 @@ namespace StadiaStudio {
+     [DataContract] public sealed class PublishedRelease {
+         [DataMember(Name="tag_name")] public string Tag;
+         [DataMember(Name="html_url")] public string Url;
++        [DataMember(Name="url")] public string ApiUrl;
+         [DataMember(Name="draft")] public bool Draft;
+         [DataMember(Name="prerelease")] public bool Prerelease;
+         public Version Version;
+     }
++    // Independent fork: the upstream project uses the 1.x version line. This
++    // build starts at 2.0.0 and must never offer an upstream release as an
++    // update, even if someone publishes one with a higher 1.x number.
+     public static class UpdateChecker {
+-        public const string ReleasesUrl="https://github.com/minysito/StadiaLink/releases/latest";
++        public const string Repository="szninjacat/StadiaLink-Win11-Fix";
++        public const string ReleasesUrl="https://github.com/"+Repository+"/releases/latest";
++        public const string ApiUrl="https://api.github.com/repos/"+Repository+"/releases/latest";
++        public const int ChannelMinimumMajor=2;
+         public static Version Current {get{return Assembly.GetExecutingAssembly().GetName().Version;}}
+         public static PublishedRelease Parse(string json){
+             PublishedRelease release;
+             using(var stream=new MemoryStream(Encoding.UTF8.GetBytes(json)))release=(PublishedRelease)new DataContractJsonSerializer(typeof(PublishedRelease)).ReadObject(stream);
+-            Version version;Uri uri;
++            Version version;Uri uri;Uri api;
+             if(release==null||release.Draft||release.Prerelease||String.IsNullOrWhiteSpace(release.Tag)||
++               (release.Tag[0]!='v'&&release.Tag[0]!='V')||
+                !System.Version.TryParse(release.Tag.TrimStart('v','V'),out version)||
+-               !Uri.TryCreate(release.Url,UriKind.Absolute,out uri)||uri.Scheme!="https"||uri.Host!="github.com"||
+-               !uri.AbsolutePath.StartsWith("/minysito/StadiaLink/releases/tag/",StringComparison.Ordinal)||!String.IsNullOrEmpty(uri.UserInfo))return null;
++               version.Major<ChannelMinimumMajor||
++               !Uri.TryCreate(release.Url,UriKind.Absolute,out uri)||uri.Scheme!="https"||
++               !String.Equals(uri.Host,"github.com",StringComparison.OrdinalIgnoreCase)||
++               !uri.AbsolutePath.StartsWith("/"+Repository+"/releases/tag/",StringComparison.OrdinalIgnoreCase)||!String.IsNullOrEmpty(uri.UserInfo)||
++               !Uri.TryCreate(release.ApiUrl,UriKind.Absolute,out api)||api.Scheme!="https"||
++               !String.Equals(api.Host,"api.github.com",StringComparison.OrdinalIgnoreCase)||
++               !api.AbsolutePath.StartsWith("/repos/"+Repository+"/releases/",StringComparison.OrdinalIgnoreCase))return null;
+             release.Version=Normalize(version);return release;
+         }
+         public static Version Normalize(Version version){return new Version(version.Major,version.Minor,Math.Max(0,version.Build),Math.Max(0,version.Revision));}
+         public static bool IsNewer(PublishedRelease release,Version current){return release!=null&&release.Version>Normalize(current);}
+         public static Task<PublishedRelease> Check(){return Task.Run(()=>{
+             ServicePointManager.SecurityProtocol|=SecurityProtocolType.Tls12;
+-            var request=(HttpWebRequest)WebRequest.Create("https://api.github.com/repos/minysito/StadiaLink/releases/latest");
+-            request.UserAgent="StadiaLink/"+Current;request.Accept="application/vnd.github+json";request.Headers["X-GitHub-Api-Version"]="2022-11-28";
++            var request=(HttpWebRequest)WebRequest.Create(ApiUrl);
++            request.UserAgent="StadiaLink-Win11-Fix/"+Current;request.Accept="application/vnd.github+json";request.Headers["X-GitHub-Api-Version"]="2022-11-28";
+             request.Timeout=request.ReadWriteTimeout=10000;request.AllowAutoRedirect=false;
+             using(var response=(HttpWebResponse)request.GetResponse())using(var stream=response.GetResponseStream())using(var reader=new StreamReader(stream)){
+                 char[] buffer=new char[4096];var body=new StringBuilder();int count;
+@@ -41,10 +54,21 @@ namespace StadiaStudio {
+             }
+         });}
+         public static void Verify(){
+-            const string valid="{\"tag_name\":\"v1.0.10\",\"html_url\":\"https://github.com/minysito/StadiaLink/releases/tag/v1.0.10\"}";
++            const string page="https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/tag/v2.0.10";
++            const string api="https://api.github.com/repos/szninjacat/StadiaLink-Win11-Fix/releases/999";
++            const string valid="{\"tag_name\":\"v2.0.10\",\"html_url\":\""+page+"\",\"url\":\""+api+"\"}";
+             var release=Parse(valid);
+-            if(!IsNewer(release,new Version(1,0,2))||IsNewer(release,new Version(1,0,10,0))||IsNewer(release,new Version(2,0)))throw new Exception("Update version ordering failed.");
+-            if(Parse(valid.Replace("github.com","example.org"))!=null||Parse(valid.Replace("v1.0.10","v1.1.0-beta"))!=null||Parse(valid.Replace("}",",\"draft\":true}"))!=null||Parse(valid.Replace("}",",\"prerelease\":true}"))!=null)throw new Exception("Untrusted or preview release accepted.");
++            if(release==null||!IsNewer(release,new Version(2,0,0))||IsNewer(release,new Version(2,0,10,0))||IsNewer(release,new Version(3,0)))throw new Exception("Update version ordering failed.");
++            if(ReleasesUrl.Contains("minysito")||ApiUrl.Contains("minysito"))throw new Exception("Update channel points at upstream.");
++            if(Parse(valid.Replace("github.com","example.org"))!=null||
++               Parse(valid.Replace("/szninjacat/StadiaLink-Win11-Fix/releases/tag/","/minysito/StadiaLink/releases/tag/"))!=null||
++               Parse(valid.Replace("/repos/szninjacat/StadiaLink-Win11-Fix/releases/","/repos/minysito/StadiaLink/releases/"))!=null||
++               Parse(valid.Replace("v2.0.10","v1.0.3"))!=null||
++               Parse(valid.Replace("v2.0.10","v1.0.2-hotfix"))!=null||
++               Parse(valid.Replace("v2.0.10","v2.1.0-beta"))!=null||
++               Parse(valid.Replace(",\"url\":\""+api+"\"",""))!=null||
++               Parse(valid.Replace("}",",\"draft\":true}"))!=null||
++               Parse(valid.Replace("}",",\"prerelease\":true}"))!=null)throw new Exception("Untrusted or out-of-channel release accepted.");
+         }
+     }
+ }
+diff --git a/app/app.manifest b/app/app.manifest
+index 9451354..f201cb4 100644
+--- a/app/app.manifest
++++ b/app/app.manifest
+@@ -1,6 +1,6 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+-  <assemblyIdentity version="1.0.2.0" name="StadiaStudio"/>
++  <assemblyIdentity version="2.0.0.0" name="StadiaStudio"/>
+   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3"><security><requestedPrivileges><requestedExecutionLevel level="asInvoker" uiAccess="false"/></requestedPrivileges></security></trustInfo>
+   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1"><application><supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"/></application></compatibility>
+   <application xmlns="urn:schemas-microsoft-com:asm.v3"><windowsSettings><dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware><dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness></windowsSettings></application>
 diff --git a/app/assets/locales.tsv b/app/assets/locales.tsv
 index 9fcd5c1..7cf004a 100644
 --- a/app/assets/locales.tsv
@@ -756,7 +922,7 @@ index 3383fa5..28e59f5 100644
  if($LASTEXITCODE){throw 'Native battery reader compilation failed'}
  & cl /nologo /W4 /O2 /MT /EHsc /std:c++17 /DUNICODE /D_UNICODE /D_WIN32_WINNT=0x0A00 /DBATTERY_PROBE /Fo"$scratch\battery-probe.obj" /Fe"$scratch\battery-probe.exe" "$PSScriptRoot\native-device.cpp" /link SetupAPI.lib BluetoothApis.lib Winusb.lib
 diff --git a/app/package.ps1 b/app/package.ps1
-index 76214a3..21b646e 100644
+index 76214a3..4590c74 100644
 --- a/app/package.ps1
 +++ b/app/package.ps1
 @@ -5,7 +5,7 @@ $root=Split-Path $PSScriptRoot -Parent
@@ -777,6 +943,15 @@ index 76214a3..21b646e 100644
  New-Item -ItemType Directory -Force $sourceStage | Out-Null
  foreach($name in @('app','driver','tests')){
      $target=Join-Path $sourceStage $name
+@@ -57,6 +57,6 @@ Set-Content -LiteralPath $hashSource -Value ('namespace StadiaStudio { public st
+ & "$framework\csc.exe" /nologo /target:winexe /platform:x64 /optimize+ /codepage:65001 /define:UPDATE_ONLY /win32manifest:"$PSScriptRoot\app.manifest" /win32icon:"$PSScriptRoot\StadiaLink.ico" /out:"$release\StadiaLink.Update.exe" /resource:"$updatePayload,payload.zip" /resource:"$root\LICENSE,LICENSE" /resource:"$PSScriptRoot\assets\locales.tsv,locales.tsv" $refs $sources $hashSource
+ if($LASTEXITCODE){throw 'Update compilation failed'}
+ Copy-Item "$PSScriptRoot\StadiaLink.exe.config" "$release\StadiaLink.Update.exe.config"
+-Copy-Item (Join-Path $stage 'Source.zip') (Join-Path $release 'StadiaLink-1.0.2-source.zip') -Force
+-@('StadiaLink.Setup.exe','StadiaLink.Update.exe','StadiaLink-1.0.2-source.zip') | ForEach-Object {$name=$_;(Get-FileHash (Join-Path $release $name) -Algorithm SHA256).Hash.ToLowerInvariant()+'  '+$name} | Set-Content (Join-Path $release 'SHA256SUMS.txt') -Encoding utf8
++Copy-Item (Join-Path $stage 'Source.zip') (Join-Path $release 'StadiaLink-2.0.0-source.zip') -Force
++@('StadiaLink.Setup.exe','StadiaLink.Update.exe','StadiaLink-2.0.0-source.zip') | ForEach-Object {$name=$_;(Get-FileHash (Join-Path $release $name) -Algorithm SHA256).Hash.ToLowerInvariant()+'  '+$name} | Set-Content (Join-Path $release 'SHA256SUMS.txt') -Encoding utf8
+ Write-Output "Update ready: $release\StadiaLink.Update.exe"
 diff --git a/driver/build.ps1 b/driver/build.ps1
 index 1a28450..2bd307f 100644
 --- a/driver/build.ps1

@@ -2,13 +2,15 @@
   <img src="app/assets/readme-logo.svg" width="112" height="112" alt="StadiaLink 标志">
   <h1>StadiaLink</h1>
   <p><strong>你的 Stadia 手柄，由你定义。</strong></p>
-  <p>Windows 11 x64 上的 Stadia 手柄配置工具 · 版本 1.0.2</p>
-  <p><a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/tag/v1.0.2-hotfix"><strong>⬇ 下载</strong></a> · <a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/issues">反馈问题</a> · <a href="LICENSE">GPL-3.0</a></p>
+  <p>Windows 11 x64 上的 Stadia 手柄配置工具 · 版本 2.0.0 (Win11-Fix)</p>
+  <p><a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/latest"><strong>⬇ 下载</strong></a> · <a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/issues">反馈问题</a> · <a href="LICENSE">GPL-3.0</a></p>
   <p>🪟 Windows 11 x64 &nbsp; · &nbsp; 🎮 XInput &nbsp; · &nbsp; 🔗 USB + 蓝牙</p>
   <p><a href="README.es.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <a href="README.en.md"><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</a> &nbsp; | &nbsp; <a href="README.fr.md"><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</a> &nbsp; | &nbsp; <a href="README.de.md"><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</a> &nbsp; | &nbsp; <strong>🇨🇳 简体中文</strong></p>
 </div>
 
 > **简体中文修复分支（2026-11-09）**：本分支修复 Windows 11 23H2 上蓝牙震动失效，将界面默认语言改为简体中文，并修复窗口「×」直接退出程序的问题。完整说明见 [RELEASE_NOTES.md](RELEASE_NOTES.md)、[CHANGELOG.md](CHANGELOG.md) 与 [docs/CHANGES.md](docs/CHANGES.md)；编译产物在 [dist/](dist/)。
+>
+> **独立版本线（2026-11-11）**：程序版本为 `2.0.0`，与上游 1.x 完全分离；只从本仓库的 Release 检查更新，上游发布新版本不会再弹出提示。
 
 ---
 
@@ -24,7 +26,7 @@
 
 ## 🚀 安装
 
-从 [Releases](https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/tag/v1.0.2-hotfix) 下载 `StadiaLink.Setup.exe` 运行，并在提示时为驱动安装授予管理员权限。通过 USB 连接手柄，或在 Windows 蓝牙设置中配对后开机，StadiaLink 会自动识别。安装包内含全部组件与对应源码，可离线安装。
+从 [Releases](https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/latest) 下载 `StadiaLink.Setup.exe` 运行，并在提示时为驱动安装授予管理员权限。通过 USB 连接手柄，或在 Windows 蓝牙设置中配对后开机，StadiaLink 会自动识别。安装包内含全部组件与对应源码，可离线安装。
 
 蓝牙连接要求手柄本身已具备蓝牙固件，StadiaLink 不会修改固件。程序仅依赖 .NET Framework 4.8 与 Windows 自带组件，不需要第三方手柄模拟器或额外运行时。
 

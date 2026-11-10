@@ -1,4 +1,4 @@
-# StadiaLink 1.0.2
+# StadiaLink 2.0.0 · Win11-Fix
 
 Selecciona un perfil, ajusta los controles y pulsa Guardar y aplicar. Los cambios del perfil se descartan al cambiar de pestaña sin guardar.
 
@@ -12,4 +12,4 @@ El inicio con Windows se guarda al marcar la casilla. Los atajos necesitan Stadi
 
 Los perfiles se conservan en `%LOCALAPPDATA%/StadiaStudio/profiles.json`; la ruta mantiene compatibilidad con las instalaciones anteriores. La desinstalación conserva los perfiles y permite elegir si retirar el controlador.
 
-La fuerza de vibración se aplica y guarda al mover las barras. Las pruebas usan la misma ganancia que el juego. En Ajustes puedes comprobar nuevas versiones y abrir sus descargas en GitHub; la descarga y la instalación son manuales. El paquete de actualización conserva perfiles y requiere un controlador compatible.
+La fuerza de vibración se aplica y guarda al mover las barras. Las pruebas usan la misma ganancia que el juego. En Ajustes puedes comprobar nuevas versiones de este fork (StadiaLink-Win11-Fix, línea 2.x) y abrir sus descargas en GitHub; nunca se consulta el repositorio original. La descarga y la instalación son manuales. El paquete de actualización conserva perfiles y requiere un controlador compatible.

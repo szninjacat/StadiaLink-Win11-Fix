@@ -10,29 +10,42 @@ namespace StadiaStudio {
     [DataContract] public sealed class PublishedRelease {
         [DataMember(Name="tag_name")] public string Tag;
         [DataMember(Name="html_url")] public string Url;
+        [DataMember(Name="url")] public string ApiUrl;
         [DataMember(Name="draft")] public bool Draft;
         [DataMember(Name="prerelease")] public bool Prerelease;
         public Version Version;
     }
+    // Independent fork: the upstream project uses the 1.x version line. This
+    // build starts at 2.0.0 and must never offer an upstream release as an
+    // update, even if someone publishes one with a higher 1.x number.
     public static class UpdateChecker {
-        public const string ReleasesUrl="https://github.com/minysito/StadiaLink/releases/latest";
+        public const string Repository="szninjacat/StadiaLink-Win11-Fix";
+        public const string ReleasesUrl="https://github.com/"+Repository+"/releases/latest";
+        public const string ApiUrl="https://api.github.com/repos/"+Repository+"/releases/latest";
+        public const int ChannelMinimumMajor=2;
         public static Version Current {get{return Assembly.GetExecutingAssembly().GetName().Version;}}
         public static PublishedRelease Parse(string json){
             PublishedRelease release;
             using(var stream=new MemoryStream(Encoding.UTF8.GetBytes(json)))release=(PublishedRelease)new DataContractJsonSerializer(typeof(PublishedRelease)).ReadObject(stream);
-            Version version;Uri uri;
+            Version version;Uri uri;Uri api;
             if(release==null||release.Draft||release.Prerelease||String.IsNullOrWhiteSpace(release.Tag)||
+               (release.Tag[0]!='v'&&release.Tag[0]!='V')||
                !System.Version.TryParse(release.Tag.TrimStart('v','V'),out version)||
-               !Uri.TryCreate(release.Url,UriKind.Absolute,out uri)||uri.Scheme!="https"||uri.Host!="github.com"||
-               !uri.AbsolutePath.StartsWith("/minysito/StadiaLink/releases/tag/",StringComparison.Ordinal)||!String.IsNullOrEmpty(uri.UserInfo))return null;
+               version.Major<ChannelMinimumMajor||
+               !Uri.TryCreate(release.Url,UriKind.Absolute,out uri)||uri.Scheme!="https"||
+               !String.Equals(uri.Host,"github.com",StringComparison.OrdinalIgnoreCase)||
+               !uri.AbsolutePath.StartsWith("/"+Repository+"/releases/tag/",StringComparison.OrdinalIgnoreCase)||!String.IsNullOrEmpty(uri.UserInfo)||
+               !Uri.TryCreate(release.ApiUrl,UriKind.Absolute,out api)||api.Scheme!="https"||
+               !String.Equals(api.Host,"api.github.com",StringComparison.OrdinalIgnoreCase)||
+               !api.AbsolutePath.StartsWith("/repos/"+Repository+"/releases/",StringComparison.OrdinalIgnoreCase))return null;
             release.Version=Normalize(version);return release;
         }
         public static Version Normalize(Version version){return new Version(version.Major,version.Minor,Math.Max(0,version.Build),Math.Max(0,version.Revision));}
         public static bool IsNewer(PublishedRelease release,Version current){return release!=null&&release.Version>Normalize(current);}
         public static Task<PublishedRelease> Check(){return Task.Run(()=>{
             ServicePointManager.SecurityProtocol|=SecurityProtocolType.Tls12;
-            var request=(HttpWebRequest)WebRequest.Create("https://api.github.com/repos/minysito/StadiaLink/releases/latest");
-            request.UserAgent="StadiaLink/"+Current;request.Accept="application/vnd.github+json";request.Headers["X-GitHub-Api-Version"]="2022-11-28";
+            var request=(HttpWebRequest)WebRequest.Create(ApiUrl);
+            request.UserAgent="StadiaLink-Win11-Fix/"+Current;request.Accept="application/vnd.github+json";request.Headers["X-GitHub-Api-Version"]="2022-11-28";
             request.Timeout=request.ReadWriteTimeout=10000;request.AllowAutoRedirect=false;
             using(var response=(HttpWebResponse)request.GetResponse())using(var stream=response.GetResponseStream())using(var reader=new StreamReader(stream)){
                 char[] buffer=new char[4096];var body=new StringBuilder();int count;
@@ -41,10 +54,21 @@ namespace StadiaStudio {
             }
         });}
         public static void Verify(){
-            const string valid="{\"tag_name\":\"v1.0.10\",\"html_url\":\"https://github.com/minysito/StadiaLink/releases/tag/v1.0.10\"}";
+            const string page="https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/tag/v2.0.10";
+            const string api="https://api.github.com/repos/szninjacat/StadiaLink-Win11-Fix/releases/999";
+            const string valid="{\"tag_name\":\"v2.0.10\",\"html_url\":\""+page+"\",\"url\":\""+api+"\"}";
             var release=Parse(valid);
-            if(!IsNewer(release,new Version(1,0,2))||IsNewer(release,new Version(1,0,10,0))||IsNewer(release,new Version(2,0)))throw new Exception("Update version ordering failed.");
-            if(Parse(valid.Replace("github.com","example.org"))!=null||Parse(valid.Replace("v1.0.10","v1.1.0-beta"))!=null||Parse(valid.Replace("}",",\"draft\":true}"))!=null||Parse(valid.Replace("}",",\"prerelease\":true}"))!=null)throw new Exception("Untrusted or preview release accepted.");
+            if(release==null||!IsNewer(release,new Version(2,0,0))||IsNewer(release,new Version(2,0,10,0))||IsNewer(release,new Version(3,0)))throw new Exception("Update version ordering failed.");
+            if(ReleasesUrl.Contains("minysito")||ApiUrl.Contains("minysito"))throw new Exception("Update channel points at upstream.");
+            if(Parse(valid.Replace("github.com","example.org"))!=null||
+               Parse(valid.Replace("/szninjacat/StadiaLink-Win11-Fix/releases/tag/","/minysito/StadiaLink/releases/tag/"))!=null||
+               Parse(valid.Replace("/repos/szninjacat/StadiaLink-Win11-Fix/releases/","/repos/minysito/StadiaLink/releases/"))!=null||
+               Parse(valid.Replace("v2.0.10","v1.0.3"))!=null||
+               Parse(valid.Replace("v2.0.10","v1.0.2-hotfix"))!=null||
+               Parse(valid.Replace("v2.0.10","v2.1.0-beta"))!=null||
+               Parse(valid.Replace(",\"url\":\""+api+"\"",""))!=null||
+               Parse(valid.Replace("}",",\"draft\":true}"))!=null||
+               Parse(valid.Replace("}",",\"prerelease\":true}"))!=null)throw new Exception("Untrusted or out-of-channel release accepted.");
         }
     }
 }

@@ -2,13 +2,15 @@
   <img src="app/assets/readme-logo.svg" width="112" height="112" alt="StadiaLink-Logo">
   <h1>StadiaLink</h1>
   <p><strong>Dein Stadia. Deine Einstellungen.</strong></p>
-  <p>Stadia-Controller für Windows 11 x64 konfigurieren · Version 1.0.2</p>
-  <p><a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/tag/v1.0.2-hotfix"><strong>⬇ Herunterladen</strong></a> · <a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/issues">Problem melden</a> · <a href="LICENSE">GPL-3.0</a></p>
+  <p>Stadia-Controller für Windows 11 x64 konfigurieren · Version 2.0.0 (Win11-Fix)</p>
+  <p><a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/latest"><strong>⬇ Herunterladen</strong></a> · <a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/issues">Problem melden</a> · <a href="LICENSE">GPL-3.0</a></p>
   <p>🪟 Windows 11 x64 &nbsp; · &nbsp; 🎮 XInput &nbsp; · &nbsp; 🔗 USB + Bluetooth</p>
   <p><a href="README.es.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <a href="README.en.md"><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</a> &nbsp; | &nbsp; <a href="README.fr.md"><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</a> &nbsp; | &nbsp; <strong><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</strong> &nbsp; | &nbsp; <a href="README.zh-CN.md">🇨🇳 简体中文</a></p>
 </div>
 
 > **Hotfix-Branch (2026-11-09)** — behebt Bluetooth-Vibration unter Windows 11 23H2, fügt vereinfachtes Chinesisch als Standardsprache hinzu und sorgt dafür, dass der Schließen-Button (und Alt+F4) das Fenster in den Infobereich minimiert statt das Programm zu beenden. Siehe [RELEASE_NOTES.md](RELEASE_NOTES.md) und [README.zh-CN.md](README.zh-CN.md).
+>
+> **Eigenständige Versionslinie (2026-11-11)** — dieser Fork hat Version 2.0.0, getrennt von der 1.x-Linie des Originals. Updates werden nur in diesem Repository geprüft; Upstream-Versionen lösen keine Benachrichtigung aus.
 
 ---
 
@@ -24,7 +26,7 @@
 
 ## 🚀 Installation
 
-Lade `StadiaLink.Setup.exe` unter [Releases](https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/tag/v1.0.2-hotfix) herunter, starte das Installationsprogramm und bestätige die Administratorabfrage für den Treiber. Verbinde den Controller über USB oder kopple ihn in den Windows-Bluetooth-Einstellungen und schalte ihn ein. StadiaLink erkennt den verfügbaren Controller.
+Lade `StadiaLink.Setup.exe` unter [Releases](https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/latest) herunter, starte das Installationsprogramm und bestätige die Administratorabfrage für den Treiber. Verbinde den Controller über USB oder kopple ihn in den Windows-Bluetooth-Einstellungen und schalte ihn ein. StadiaLink erkennt den verfügbaren Controller.
 
 Bluetooth setzt die Bluetooth-Firmware des Controllers voraus. StadiaLink verändert keine Firmware. Das Installationsprogramm enthält die Komponenten und den zugehörigen Quellcode und funktioniert offline. Es nutzt .NET Framework 4.8 und Windows-Komponenten; zusätzliche Controller-Emulatoren oder Laufzeitumgebungen von Drittanbietern sind nicht erforderlich.
 

@@ -2,13 +2,15 @@
   <img src="app/assets/readme-logo.svg" width="112" height="112" alt="Logo StadiaLink">
   <h1>StadiaLink</h1>
   <p><strong>Votre Stadia. À votre façon.</strong></p>
-  <p>Configuration de la manette Stadia pour Windows 11 x64 · Version 1.0.2</p>
-  <p><a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/tag/v1.0.2-hotfix"><strong>⬇ Télécharger</strong></a> · <a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/issues">Signaler un problème</a> · <a href="LICENSE">GPL-3.0</a></p>
+  <p>Configuration de la manette Stadia pour Windows 11 x64 · Version 2.0.0 (Win11-Fix)</p>
+  <p><a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/latest"><strong>⬇ Télécharger</strong></a> · <a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/issues">Signaler un problème</a> · <a href="LICENSE">GPL-3.0</a></p>
   <p>🪟 Windows 11 x64 &nbsp; · &nbsp; 🎮 XInput &nbsp; · &nbsp; 🔗 USB + Bluetooth</p>
   <p><a href="README.es.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <a href="README.en.md"><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</a> &nbsp; | &nbsp; <strong><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</strong> &nbsp; | &nbsp; <a href="README.de.md"><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</a> &nbsp; | &nbsp; <a href="README.zh-CN.md">🇨🇳 简体中文</a></p>
 </div>
 
 > **Branche corrective (2026-11-09)** — corrige les vibrations Bluetooth sous Windows 11 23H2, ajoute le chinois simplifié comme langue par défaut et fait que le bouton de fermeture (ainsi qu'Alt+F4) réduit l'application dans la zone de notification au lieu de la quitter. Voir [RELEASE_NOTES.md](RELEASE_NOTES.md) et [README.zh-CN.md](README.zh-CN.md).
+>
+> **Ligne de version indépendante (2026-11-11)** — ce fork porte la version 2.0.0, distincte de la ligne 1.x d'origine. Les mises à jour ne sont vérifiées que dans ce dépôt ; une version amont ne déclenche aucun avis.
 
 ---
 
@@ -24,7 +26,7 @@
 
 ## 🚀 Installation
 
-Téléchargez `StadiaLink.Setup.exe` depuis les [versions publiées](https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/tag/v1.0.2-hotfix), lancez-le et autorisez l'installation du pilote avec les droits administrateur. Connectez la manette par USB ou associez-la dans les paramètres Bluetooth de Windows, puis allumez-la. StadiaLink détecte la manette disponible.
+Téléchargez `StadiaLink.Setup.exe` depuis les [versions publiées](https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/latest), lancez-le et autorisez l'installation du pilote avec les droits administrateur. Connectez la manette par USB ou associez-la dans les paramètres Bluetooth de Windows, puis allumez-la. StadiaLink détecte la manette disponible.
 
 Le Bluetooth nécessite le firmware Bluetooth de la manette. StadiaLink ne modifie pas le firmware. L'installateur contient ses composants et le code source correspondant et fonctionne hors ligne. Il utilise .NET Framework 4.8 et les composants Windows, sans émulateur de manette ni environnement d'exécution tiers supplémentaire.
 

@@ -1,8 +1,8 @@
-# StadiaLink 1.0.2 修复分支 · 版本说明
+# StadiaLink 2.0.0 独立修复分支 · 版本说明
 
 - **日期**：2026-11-09
 - **基线**：`bea80f3` — *Correct release version to 1.0.2*（`origin`: `https://github.com/minysito/StadiaLink.git`）
-- **程序内版本号**：仍为 `1.0.2`（本分支是修复版本；`App.cs`、`MainWindow.cs` 等文件有代码改动，但 `App.cs`、`Setup.cs`、`InstallerActions.cs`、`package.ps1` 中的版本字面量一律未变，因此现有 exe 与源码一致）
+- **程序内版本号**：`2.0.0`（2026-11-11 起启用独立版本线；`App.cs`、`Setup.cs`、`app.manifest`、`InstallerActions.cs`、`package.ps1` 与界面显示均已同步，Release tag 为 `v2.0.0`，与上游 1.x 不再共用版本号）
 - **许可证**：GPL-3.0，见 [LICENSE](LICENSE)；第三方代码归属见 [UPSTREAM-README.md](UPSTREAM-README.md)
 - **简体中文文档**：[README.zh-CN.md](README.zh-CN.md)（功能、安装、构建、使用、排障、致谢）
 
@@ -57,12 +57,14 @@ WPF 细节：`Closing` 事件里仅设置 `WindowState=Minimized` 会被关闭�
 
 | 文件 | 大小 (B) | SHA-256（前 16 位） | 说明 |
 | --- | --- | --- | --- |
-| `StadiaLink.Setup.exe` | 594,944 | `6dca7491d78cf0c6` | 简体中文完整安装包（内嵌应用 + 驱动 + 原生库 + 源码，含关闭按钮修复与 2026-11-10 审查加固） | 简体中文完整安装包（内嵌应用 + 驱动 + 原生库 + 源码，含关闭按钮修复） |
-| `StadiaLink.exe` | 251,392 | `530c56e950e99161` | WPF 主程序 x64 | WPF 主程序 x64 |
-| `StadiaLink.Update.exe` | 513,024 | `5154e61b705d2f6c` | 仅应用更新包 | 仅应用更新包 |
-| `StadiaDevice.dll` | 165,376 | `496e4e94817eb23b` | 原生电池读取库 | 原生电池读取库 |
-| `driver/winstadia.dll` | 152,064 | `06b70008929b2cb7` | UMDF 驱动（含双 IID、阶段诊断与分层自动适配） | UMDF 驱动（含双 IID 与阶段诊断） |
+| `StadiaLink.Setup.exe` | 595,968 | `8349cbed7a9beebb` | 简体中文完整安装包（内嵌应用 + 驱动 + 原生库 + 源码；2.0.0 独立版本线，含关闭按钮修复与自动适配） |
+| `StadiaLink.exe` | 253,440 | `582b8d8c39d92543` | WPF 主程序 x64（版本资源 `2.0.0.0`） |
+| `StadiaLink.Update.exe` | 514,048 | `e2f133f03e1c410e` | 仅应用更新包 |
+| `StadiaDevice.dll` | 165,376 | `b3e6816ddccfe7ae` | 原生电池读取库 |
+| `driver/winstadia.dll` | 152,064 | `06b70008929b2cb7` | UMDF 驱动（含双 IID、阶段诊断与分层自动适配） |
 | `driver/winstadia.inf` | 3,970 | `fc0a1d07216dbd48` | `DriverVer=11/10/2026,19.30.26.699` |
+
+2026-11-11 为独立版本线重新编译了三个 exe 与 `StadiaDevice.dll`（驱动 DLL / INF 未改动，仍为 11-10 版）；上表与 `dist/SHA256SUMS.txt` 均为本次重编后的实际值。
 
 另含 2 个 `.exe.config` 及 `SHA256.txt` / `SHA256SUMS.txt`。完整哈希以 `dist/SHA256SUMS.txt` 为准，可用 `Get-FileHash -Algorithm SHA256` 复核。已从安装包内嵌的 `payload.zip` 中解出核对：`driver/pkg/winstadia.dll`、`driver/pkg/winstadia.inf` 与 `StadiaLink.exe` 均和 `dist/` 中的副本逐字节一致。
 
@@ -91,6 +93,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 - 实机震动：`driver/status.ps1` 报告 `probeStatus=0x00000000`、`writeHRESULT=0x00000000`、`writes` 持续增长。
 - 关闭行为自测 PASS（`--draft-test`）：最小化、**×** 按钮、系统关闭三种入口都会驻留托盘，托盘恢复均正常。
 - 实时震动滑块测试在退出占用单实例锁的旧实例后重跑 PASS；全套应用与模型测试在最终 2026-11-10 18:46 重建版上全部通过（配置翻译 4,864,527 次检查、应用模型自测、实时震动滑块测试均 PASS）。
+- 2026-11-11 独立版本线重编译：三个 exe 与 `StadiaDevice.dll` 的版本资源为 `2.0.0.0`，`UpdateChecker.Verify()` 覆盖上游地址、1.x / 旧 hotfix / 预览 tag 与 draft 的拒绝断言；上表哈希与 `dist/SHA256SUMS.txt` 逐项复核一致。
 
 ## 6. 目录结构
 
@@ -104,7 +107,7 @@ tests/      测试与两个诊断/生成工具
 dist/       本次编译产物 + SHA-256 清单
 docs/CHANGES.md              逐文件改动说明与排除清单
 docs/COMPATIBILITY.md        兼容性矩阵、分层自动适配与熔断机制、新增 IID 实机验证流程
-patches/v1.0.2-hotfix.patch  相对 1.0.2 的可 apply 代码补丁（17 个文本文件）
+patches/v1.0.2-hotfix.patch  相对 1.0.2 的可 apply 代码补丁（21 个文本文件，约 219 KB）
 ```
 
 `dist/` 被有意纳入版本控制（见 `.gitignore` 注释）；构建中间产物、智能体工作目录与本机专用脚本均未包含。
@@ -116,6 +119,7 @@ patches/v1.0.2-hotfix.patch  相对 1.0.2 的可 apply 代码补丁（17 个文�
 3. 若手柄未出现，关开一次蓝牙或重新插拔；此前 `pnputil` 返回 **3010** 即表示需要重连设备。
 4. 运行 `driver/status.ps1`：成功标志为 `probeStatus=0x00000000`、`report=5 type=2 value=0x0044`、`writes` 递增；编译版还会显示 `Private GATT stage` 与所选 IID。
 5. 回滚：`StadiaLink.Setup.exe /uninstall`，或管理员运行 `driver/install.ps1 -Uninstall`。
+6. **从 1.0.2 修复版升级**：旧版 exe 内写死了上游更新地址，无法通过远程配置修正，请直接运行本版 `StadiaLink.Setup.exe` 覆盖安装。安装后界面显示 `2.0.0 · Win11-Fix`，此后只有本仓库发布 v2.x 正式 Release 才会提示更新。
 
 ## 8. 已知限制
 
@@ -163,3 +167,19 @@ patches/v1.0.2-hotfix.patch  相对 1.0.2 的可 apply 代码补丁（17 个文�
 **验证**：精简 WDK 下驱动与三个 exe 重编译成功（仅 3 类既有 WDK 头警告）；`STADIALINK_AUTO_IID=1/0` 两种策略均零警告编译通过；策略单测 26 项全过；配置翻译 4,864,527 次检查与应用模型自测 PASS。本机 22631 命中硬编码 IID，自动适配路径不会触发，**该路径暂无实机覆盖**；实时震动滑块测试因用户托盘实例占用单实例锁未重跑。
 
 **限制**：自动适配解决 IID 变化，不解决 vtable 方法顺序变化；Windows 10 / 22H2 / 24H2 仍无实机验证数据，不承诺成功。完整机制与实机验证步骤见 [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)。
+
+## 11. 独立版本线与更新通道（2026-11-11）
+
+**问题**：原版 `app/UpdateChecker.cs` 把更新检查地址写死为 `minysito/StadiaLink`，`Parse()` 还强制要求 `html_url` 属于上游仓库。上游 2026-11-10 发布 1.0.3 后，本分支安装的用户会被提示升级到上游版本。
+
+| 位置 | 处理 |
+| --- | --- |
+| `app/UpdateChecker.cs` | `ReleasesUrl` 与 API 地址改为 `szninjacat/StadiaLink-Win11-Fix`；`Parse()` 同时校验页面 URL 与 API `url` 的仓库归属、HTTPS、非 draft/预发布，且 tag 必须是 `v` 前缀的纯版本号、**Major ≥ 2**。上游 1.x、旧 `v1.0.2-hotfix`、带后缀的预览 tag 一律拒绝 |
+| 版本字面量 | `App.cs` / `Setup.cs` 的 `AssemblyVersion` / `AssemblyFileVersion`、`app.manifest`、`USO.md`、`package.ps1` 源码包文件名统一为 `2.0.0` |
+| `app/InstallerActions.cs` | 卸载注册表 `DisplayVersion` 改为从程序集版本动态读取，`DisplayName` 改为 `StadiaLink Win11 Fix`，`Publisher` 指向本仓库 |
+| `app/MainWindow.cs` | 侧栏与「关于」版本显示动态读取并标注 `Win11-Fix`；更新通知标记改用 `Win11Fix.UpdateNotified`，与上游/旧版残留隔离 |
+| 文档与下载 | 6 语 README 版本徽标改为 `2.0.0 (Win11-Fix)`，下载按钮改指 `/releases/latest` |
+
+**效果**：程序内版本 `2.0.0.0` 与 Release tag `v2.0.0` 一致；只有本仓库发布 `v2.x` 及以上正式 Release 才会触发更新提示。`UpdateChecker.Verify()` 增加了针对上游地址、1.x tag、旧 hotfix tag、预览 tag、伪造 API 地址与 draft/prerelease 的拒绝断言。
+
+**注意**：已安装 1.0.2 修复版的用户必须重装本版 Setup.exe；旧 exe 内的地址无法通过远程配置改变。旧 Release `v1.0.2-hotfix` 保留为历史记录，不再作为默认下载入口。
