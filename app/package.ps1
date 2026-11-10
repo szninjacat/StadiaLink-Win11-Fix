@@ -5,7 +5,7 @@ $root=Split-Path $PSScriptRoot -Parent
 $scratch=[IO.Path]::GetFullPath((Join-Path $root '.build/app'))
 $stage=Join-Path $scratch 'stage'
 if([IO.Path]::GetFullPath($stage) -ine (Join-Path $scratch 'stage')){throw 'Invalid staging path'}
-if(Test-Path -LiteralPath $stage){Remove-Item -LiteralPath $stage -Recurse -Force}
+if($env:STADIALINK_SKIP_STAGE_CLEANUP -ne '1' -and (Test-Path -LiteralPath $stage)){Remove-Item -LiteralPath $stage -Recurse -Force}
 New-Item -ItemType Directory -Force $stage,(Join-Path $stage 'driver/pkg') | Out-Null
 $release=Join-Path $root 'release'
 Copy-Item "$release\StadiaLink.exe","$release\StadiaLink.exe.config" $stage
@@ -21,7 +21,7 @@ $identityHash=[Security.Cryptography.SHA256]::Create()
 try {$fingerprint=[BitConverter]::ToString($identityHash.ComputeHash([Text.Encoding]::UTF8.GetBytes($driverIdentity.ToString()))).Replace('-','')} finally {$identityHash.Dispose()}
 $fingerprint | Set-Content (Join-Path $stage 'Driver.sha256')
 $sourceStage=Join-Path $scratch 'source'
-if(Test-Path -LiteralPath $sourceStage){if([IO.Path]::GetFullPath($sourceStage) -ine (Join-Path $scratch 'source')){throw 'Invalid source path'};Remove-Item -LiteralPath $sourceStage -Recurse -Force}
+if($env:STADIALINK_SKIP_STAGE_CLEANUP -ne '1' -and (Test-Path -LiteralPath $sourceStage)){if([IO.Path]::GetFullPath($sourceStage) -ine (Join-Path $scratch 'source')){throw 'Invalid source path'};Remove-Item -LiteralPath $sourceStage -Recurse -Force}
 New-Item -ItemType Directory -Force $sourceStage | Out-Null
 foreach($name in @('app','driver','tests')){
     $target=Join-Path $sourceStage $name

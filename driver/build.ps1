@@ -30,12 +30,16 @@ if ($resolvedOut -ine $expectedOut -or (Split-Path $resolvedOut -Parent) -ine [I
 Remove-Item -LiteralPath $resolvedOut -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $obj, $pkg | Out-Null
 
-# Import the MSVC x64 environment.
-$vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-$vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-if (-not $vs) { throw 'MSVC build tools not found' }
-cmd /c "`"$vs\VC\Auxiliary\Build\vcvars64.bat`" >nul 2>&1 && set" | ForEach-Object {
-    if ($_ -match '^([^=]+)=(.*)$') { Set-Item "env:$($Matches[1])" $Matches[2] }
+# Import the MSVC x64 environment. Hosts that cannot run vcvars64.bat (for
+# example CI sandboxes that block reg.exe) may prepare INCLUDE/LIB/PATH
+# themselves and set STADIALINK_VC_ENV_READY=1 to skip the import.
+if ($env:STADIALINK_VC_ENV_READY -ne '1') {
+    $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+    if (-not $vs) { throw 'MSVC build tools not found' }
+    cmd /c "`"$vs\VC\Auxiliary\Build\vcvars64.bat`" >nul 2>&1 && set" | ForEach-Object {
+        if ($_ -match '^([^=]+)=(.*)$') { Set-Item "env:$($Matches[1])" $Matches[2] }
+    }
 }
 
 # hidport.h lives among the kernel headers; stage it alone so that the rest of

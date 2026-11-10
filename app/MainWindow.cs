@@ -44,7 +44,7 @@ namespace StadiaStudio {
         int testIntensity=50;
         int selectedButton=0;string route="Mando";Profile loadedHardware;
         readonly DesktopActions desktopActions=new DesktopActions();Profile activeActions;
-        BatteryTray tray;int? batteryLevel;DateTime nextBattery=DateTime.MinValue;bool batteryBusy;
+        BatteryTray tray;int? batteryLevel;DateTime nextBattery=DateTime.MinValue;bool batteryBusy;Button closeButton;bool forceClose;
         readonly TextBlock batteryText=Ui.T("Batería: —",12,Ui.Muted);
         ComboBox actionPicker,keyPicker;StackPanel shortcutOptions;TextBlock actionHint;
         readonly Dictionary<int,CheckBox> modifierChecks=new Dictionary<int,CheckBox>();
@@ -93,7 +93,7 @@ namespace StadiaStudio {
             Grid chrome=new Grid();chrome.MouseLeftButtonDown+=(s,e)=>{if(e.ClickCount==2)WindowState=WindowState==WindowState.Maximized?WindowState.Normal:WindowState.Maximized;else if(e.LeftButton==MouseButtonState.Pressed)DragMove();};
             chrome.Children.Add(Ui.T("CONFIGURACIÓN DEL MANDO",10,Ui.Muted,true));((TextBlock)chrome.Children[0]).VerticalAlignment=VerticalAlignment.Center;
             StackPanel windowButtons=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right};
-            windowButtons.Children.Add(WindowButton("—",()=>WindowState=WindowState.Minimized));windowButtons.Children.Add(WindowButton("□",()=>WindowState=WindowState==WindowState.Maximized?WindowState.Normal:WindowState.Maximized));windowButtons.Children.Add(WindowButton("×",Close));chrome.Children.Add(windowButtons);main.Children.Add(chrome);
+            windowButtons.Children.Add(WindowButton("—",()=>WindowState=WindowState.Minimized));windowButtons.Children.Add(WindowButton("□",()=>WindowState=WindowState==WindowState.Maximized?WindowState.Normal:WindowState.Maximized));closeButton=WindowButton("×",MinimizeToTray);windowButtons.Children.Add(closeButton);chrome.Children.Add(windowButtons);main.Children.Add(chrome);
             Grid header=new Grid{Margin=new Thickness(0,0,0,12)};header.ColumnDefinitions.Add(new ColumnDefinition());header.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
             StackPanel titles=new StackPanel();TextBlock title=Ui.T("",30,null,true);title.Name="PageTitle";titles.Children.Add(title);header.Children.Add(titles);
             StackPanel actions=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};Grid.SetColumn(actions,1);header.Children.Add(actions);
@@ -101,12 +101,18 @@ namespace StadiaStudio {
             apply=Ui.Button("Guardar y aplicar",()=>Run(ApplyDraft),true);actions.Children.Add(apply);Grid.SetRow(header,1);main.Children.Add(header);
             Grid.SetRow(page,2);main.Children.Add(page);footer.VerticalAlignment=VerticalAlignment.Center;footer.TextTrimming=TextTrimming.CharacterEllipsis;Grid.SetRow(footer,3);main.Children.Add(footer);
             SizeChanged+=(s,e)=>{bool compact=ActualWidth<1100;shell.ColumnDefinitions[0].Width=new GridLength(compact?160:208);sidebar.Padding=new Thickness(compact?12:20,18,compact?12:20,14);main.Margin=new Thickness(compact?16:24,0,compact?16:24,0);};
-            Content=shell;Navigate("Mando");timer.Interval=TimeSpan.FromMilliseconds(8);timer.Tick+=(s,e)=>{ConsumeInput();Poll();};Loaded+=(s,e)=>{tray=new BatteryTray(RestoreFromTray,Close);tray.UpdateClicked=()=>{RestoreFromTray();Navigate("Ajustes");UpdateLayout();if(updateText!=null)updateText.BringIntoView();};Task.Factory.StartNew(SampleInput,CancellationToken.None,TaskCreationOptions.LongRunning,TaskScheduler.Default);CompositionTarget.Rendering+=RenderFrame;timer.Start();Poll();StartUpdateChecks();};
+            Content=shell;Navigate("Mando");timer.Interval=TimeSpan.FromMilliseconds(8);timer.Tick+=(s,e)=>{ConsumeInput();Poll();};Loaded+=(s,e)=>{tray=new BatteryTray(RestoreFromTray,ForceClose);tray.UpdateClicked=()=>{RestoreFromTray();Navigate("Ajustes");UpdateLayout();if(updateText!=null)updateText.BringIntoView();};Task.Factory.StartNew(SampleInput,CancellationToken.None,TaskCreationOptions.LongRunning,TaskScheduler.Default);CompositionTarget.Rendering+=RenderFrame;timer.Start();Poll();StartUpdateChecks();};
             updateTimer.Tick+=async(s,e)=>await CheckForUpdates(false);
             StateChanged+=(s,e)=>{if(WindowState==WindowState.Minimized){Hide();ShowInTaskbar=false;}};
+            Closing+=(s,e)=>{if(forceClose||tray==null||!tray.Visible)return;e.Cancel=true;Hide();ShowInTaskbar=false;};
             Closed+=(s,e)=>{if(motorSavePending){try{persistMotorProfiles();motorSavePending=false;}catch(Exception ex){Entry.Log(ex);}}closed=true;updateTimer.Stop();stopSampling=true;if(vibrationCancel!=null)vibrationCancel.Cancel();CompositionTarget.Rendering-=RenderFrame;timer.Stop();desktopActions.Dispose();if(tray!=null)tray.Dispose();if(pad!=null)pad.Dispose();};
         }
         void RestoreFromTray(){ShowInTaskbar=true;Show();WindowState=WindowState.Normal;Activate();}
+        // The window chrome has its own close button. Both it and the system
+        // close command (Alt+F4) park the app in the notification area; the
+        // tray's "Salir" item and automated tests use ForceClose to really quit.
+        void MinimizeToTray(){if(tray!=null&&tray.Visible)WindowState=WindowState.Minimized;else Close();}
+        public void ForceClose(){forceClose=true;Close();}
         Button WindowButton(string text,Action click){Button b=Ui.Button(text,click);b.MinHeight=30;b.Width=40;b.Padding=new Thickness(4);b.Margin=new Thickness(4,2,0,2);b.BorderThickness=new Thickness(0);b.Background=Ui.Background;return b;}
         void FillProfiles(){loading=true;profilePicker.ItemsSource=library.Profiles.Select(p=>I18n.ProfileName(p.Name)).ToArray();profilePicker.SelectedIndex=library.Profiles.FindIndex(p=>p.Name==originalName);loading=false;}
         void SwitchProfile(string name) {
@@ -262,7 +268,7 @@ namespace StadiaStudio {
         void NewProfile(){AddProfile(new Profile{Name=UniqueName(I18n.T("Nuevo perfil"))});}
         void DuplicateProfile(){Profile p=draft.Clone();p.Name=UniqueName(draft.Name.Length>45?I18n.T("Copia de perfil"):I18n.ProfileName(draft.Name)+I18n.T(" · copia"));AddProfile(p);}
         void AddProfile(Profile p){RunSync(()=>{if(library.Profiles.Count>=100)throw new InvalidOperationException("La biblioteca admite hasta 100 perfiles.");library.Profiles.Add(p);library.Selected=p.Name;library.Save();draft=p.Clone();originalName=p.Name;dirty=false;FillProfiles();Navigate("Perfiles");I18n.SetText(footer,"Perfil creado. Guárdalo y aplícalo cuando esté listo.");});}
-        void DeleteProfile(){if(library.Profiles.Count<=1)return;if(MessageBox.Show(this,I18n.T("¿Eliminar el perfil «")+I18n.ProfileName(originalName)+"»?",I18n.T("Eliminar perfil"),MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return;RunSync(()=>{if(library.Applied==originalName){library.Applied=null;activeActions=null;desktopActions.Release();}library.Profiles.RemoveAll(p=>p.Name==originalName);draft=library.Profiles[0].Clone();originalName=draft.Name;library.Selected=originalName;library.Save();dirty=false;FillProfiles();Navigate("Perfiles");});}
+        void DeleteProfile(){if(library.Profiles.Count<=1)return;if(MessageBox.Show(this,I18n.T("¿Eliminar el perfil «")+I18n.ProfileName(originalName)+I18n.T("»?"),I18n.T("Eliminar perfil"),MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return;RunSync(()=>{if(library.Applied==originalName){library.Applied=null;activeActions=null;desktopActions.Release();}library.Profiles.RemoveAll(p=>p.Name==originalName);draft=library.Profiles[0].Clone();originalName=draft.Name;library.Selected=originalName;library.Save();dirty=false;FillProfiles();Navigate("Perfiles");});}
         void ImportProfile(){OpenFileDialog d=new OpenFileDialog{Filter=I18n.T("Perfil StadiaLink (*.json)")+"|*.json"};if(d.ShowDialog(this)!=true)return;RunSync(()=>{FileInfo f=new FileInfo(d.FileName);if(f.Length>65536)throw new InvalidDataException("Archivo demasiado grande.");Profile p=Profile.FromJson(File.ReadAllText(d.FileName));p.Name=UniqueName(p.Name);AddProfile(p);});}
         void ExportProfile(){SaveFileDialog d=new SaveFileDialog{Filter=I18n.T("Perfil StadiaLink (*.json)")+"|*.json",FileName="perfil-stadia.json"};if(d.ShowDialog(this)!=true)return;RunSync(()=>{File.WriteAllText(d.FileName,draft.ToJson());I18n.SetText(footer,"Perfil exportado.");});}
         void ResetDraft(){string name=draft.Name;draft=new Profile{Name=name};MarkDirty();Navigate(route);}
@@ -411,7 +417,11 @@ namespace StadiaStudio {
                 Navigate("Vibración",true);if(dirty||draft.Actions[0]!=original.Actions[0])throw new Exception("Tab switch did not discard shortcut.");
                 WindowState=WindowState.Minimized;if(IsVisible||ShowInTaskbar||tray==null||!tray.Visible)throw new Exception("Minimize to tray failed.");
                 RestoreFromTray();if(!IsVisible||!ShowInTaskbar||WindowState!=WindowState.Normal)throw new Exception("Restore from tray failed.");
-                File.WriteAllText(file,"PASS: tabs discard edits without saving; shortcut selector and modifiers; minimize to notification area; restore window.");
+                closeButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));if(IsVisible||ShowInTaskbar||tray==null||!tray.Visible)throw new Exception("Close button did not minimize to tray.");
+                RestoreFromTray();if(!IsVisible||!ShowInTaskbar||WindowState!=WindowState.Normal)throw new Exception("Restore after close button failed.");
+                Close();if(IsVisible||ShowInTaskbar)throw new Exception("System close did not minimize to tray.");
+                RestoreFromTray();if(!IsVisible||!ShowInTaskbar||WindowState!=WindowState.Normal)throw new Exception("Restore after system close failed.");
+                File.WriteAllText(file,"PASS: tabs discard edits without saving; shortcut selector and modifiers; minimize, close button and system close all park in notification area; restore window.");
             }finally{draft=original;dirty=wasDirty;Navigate(previousRoute);}
         }
         public void VerifyAnalogPreview() {

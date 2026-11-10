@@ -1,5 +1,14 @@
 // Native Stadia rumble transport. Private ABI recovered from the installed
 // Microsoft.Bluetooth.Service and HidOverGatt public symbols (Windows 26200).
+//
+// The private GattClientDevice interface IID is not stable across Windows
+// builds. Build 22631 (23H2) ships 0799A6A6-E942-5218-8A0E-7C9B996E4158
+// where 26200 ships 6BBEDE1F-797F-5C17-8AC7-3F342037CB59. Asking for the
+// 26200 IID on 22631 fails with E_NOINTERFACE (0x80004002), which is the
+// "no vibration over Bluetooth" symptom. The statics IID above it is shared
+// by both builds, so only the device facet has to be selected per build.
+// Known IIDs are tried first; an unknown build falls back to asking the
+// created object which private interfaces it actually implements.
 #define WIN32_LEAN_AND_MEAN
 #include "private-gatt.h"
 #include <roapi.h>
@@ -8,6 +17,7 @@
 #include <asyncinfo.h>
 #include <windows.storage.streams.h>
 #include <robuffer.h>
+#include <combaseapi.h>
 #include <wrl/client.h>
 #include <wrl/wrappers/corewrappers.h>
 #include <new>
@@ -74,18 +84,80 @@ static HRESULT ResultVector(IInspectable* result,IInspectable** vector,UINT32* c
     if(SUCCEEDED(hr) && *count>128) return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
     return hr;
 }
-static HRESULT GetDevice(UINT64 address,IInspectable** device) {
+// Microsoft.Bluetooth.Profiles.Gatt.Interface.GattClientDevice device facet.
+// Each IID was read from the inbox HidOverGatt.dll of its build, where it sits
+// next to the statics IID that both builds share.
+static const GUID DeviceIids[] = {
+    {0x6bbede1f,0x797f,0x5c17,{0x8a,0xc7,0x3f,0x34,0x20,0x37,0xcb,0x59}}, // Windows 26200+
+    {0x0799a6a6,0xe942,0x5218,{0x8a,0x0e,0x7c,0x9b,0x99,0x6e,0x41,0x58}}, // Windows 22631 (23H2)
+};
+#define DEVICE_IID_COUNT (sizeof(DeviceIids)/sizeof(DeviceIids[0]))
+
+static HRESULT QueryDeviceFacet(IInspectable* created,const GUID& iid,IInspectable** device) {
+    ComPtr<IInspectable> facet;
+    HRESULT hr=created->QueryInterface(iid,(void**)facet.GetAddressOf());
+    if(FAILED(hr) || !facet) return FAILED(hr)?hr:E_NOINTERFACE;
+    *device=facet.Detach();
+    return S_OK;
+}
+
+// Last resort for an unrecognised Windows build: IInspectable::GetIids (slot 3)
+// lists the private interfaces the created object really implements. WinRT
+// parameterized interfaces carry 0x5xxx in Data3, which separates them from
+// IUnknown / IInspectable / IAgileObject / IStringable plumbing.
+static HRESULT DiscoverDeviceIid(IInspectable* created,GUID* selected,ULONG* index) {
+    ULONG count=0;GUID* iids=nullptr;
+    HRESULT hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,ULONG*,GUID**)>(created,3)
+        (created,&count,&iids);
+    if(FAILED(hr)) return hr;
+    if(!iids || !count || count>32) {
+        if(iids) CoTaskMemFree(iids);
+        return E_UNEXPECTED;
+    }
+    hr=E_NOINTERFACE;
+    for(ULONG i=0;i<count;i++) {
+        const GUID& candidate=iids[i];
+        if((candidate.Data3 & 0xF000)!=0x5000) continue;
+        bool known=false;
+        for(size_t k=0;k<DEVICE_IID_COUNT;k++) {
+            if(IsEqualGUID(candidate,DeviceIids[k])) {known=true;break;}
+        }
+        if(known) continue;
+        *selected=candidate;*index=0x80+i;hr=S_OK;break;
+    }
+    CoTaskMemFree(iids);
+    return hr;
+}
+
+static HRESULT GetDevice(UINT64 address,IInspectable** device,Session& session) {
     *device=nullptr;
+    session.Diagnostics.Stage=STADIA_GATT_STAGE_ACTIVATION;
     const GUID staticsIID={0xcbaa1a5f,0xdcef,0x508b,{0xac,0xc6,0x15,0x8f,0x1e,0x16,0x0c,0x0f}};
     ComPtr<GattStatics> factory;
     HRESULT hr=RoGetActivationFactory(HStringReference(L"Microsoft.Bluetooth.Profiles.Gatt.Interface.GattClientDevice").Get(),staticsIID,(void**)factory.GetAddressOf());
     if(FAILED(hr)) return hr;
+
+    session.Diagnostics.Stage=STADIA_GATT_STAGE_CREATE_ASYNC;
     RemoteAddress remote={address,1,0};ComPtr<IInspectable> operation;
     hr=factory->CreateAsync(remote,0,nullptr,nullptr,0,&operation);if(FAILED(hr)) return hr;
+
+    session.Diagnostics.Stage=STADIA_GATT_STAGE_AWAIT_CREATE;
     ComPtr<IInspectable> created;hr=Await(operation.Get(),&created);if(FAILED(hr)) return hr;
     if(!created) return E_UNEXPECTED;
-    const GUID iid={0x6bbede1f,0x797f,0x5c17,{0x8a,0xc7,0x3f,0x34,0x20,0x37,0xcb,0x59}};
-    return created->QueryInterface(iid,(void**)device);
+
+    session.Diagnostics.Stage=STADIA_GATT_STAGE_DEVICE_QUERY;
+    for(size_t i=0;i<DEVICE_IID_COUNT;i++) {
+        hr=QueryDeviceFacet(created.Get(),DeviceIids[i],device);
+        if(SUCCEEDED(hr)) {session.Diagnostics.IidIndex=(ULONG)(i+1);return S_OK;}
+    }
+    // Neither known build matched. Let the object describe itself instead of
+    // hard-failing forever on a future Windows update.
+    GUID discovered;ULONG index=0;
+    hr=DiscoverDeviceIid(created.Get(),&discovered,&index);
+    if(FAILED(hr)) return hr;
+    hr=QueryDeviceFacet(created.Get(),discovered,device);
+    if(SUCCEEDED(hr)) session.Diagnostics.IidIndex=index;
+    return hr;
 }
 static HRESULT ReadReportReference(IInspectable* discovery,IInspectable* characteristic,const CharacteristicInfo& info,UCHAR* id,UCHAR* type) {
     GUID reference=BluetoothUuid(0x2908);
@@ -117,7 +189,9 @@ static HRESULT ReadReportReference(IInspectable* discovery,IInspectable* charact
     *id=bytes[0];*type=bytes[1];return S_OK;
 }
 static HRESULT Open(UINT64 address,Session& session) {
-    ComPtr<IInspectable> device;HRESULT hr=GetDevice(address,&device);if(FAILED(hr)) return hr;
+    ComPtr<IInspectable> device;
+    HRESULT hr=GetDevice(address,device.GetAddressOf(),session);if(FAILED(hr)) return hr;
+    session.Diagnostics.Stage=STADIA_GATT_STAGE_HID_SERVICE;
     GUID hid=BluetoothUuid(0x1812);ComPtr<IInspectable> operation;
     hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,const GUID*,UINT32,IInspectable**)>(device.Get(),11)(device.Get(),&hid,0,&operation);
     if(FAILED(hr)) return hr;
@@ -128,10 +202,12 @@ static HRESULT Open(UINT64 address,Session& session) {
     hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,UINT32,ServiceInfo*)>(vector.Get(),6)(vector.Get(),0,&serviceInfo);
     if(FAILED(hr)) return hr;
     if(!IsEqualGUID(serviceInfo.Uuid,hid)) return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+    session.Diagnostics.Stage=STADIA_GATT_STAGE_SERVICE_OBJECT;
     ComPtr<IInspectable> service;
     hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,const ServiceInfo*,UINT64,UINT32,IInspectable**)>(device.Get(),14)
         (device.Get(),&serviceInfo,0x0000000100000001ULL,0,&service);
     if(FAILED(hr) || !service) return FAILED(hr)?hr:E_UNEXPECTED;
+    session.Diagnostics.Stage=STADIA_GATT_STAGE_DISCOVERY;
     ComPtr<IInspectable> discovery;
     hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,IInspectable**)>(service.Get(),11)(service.Get(),&discovery);
     if(FAILED(hr) || !discovery) return FAILED(hr)?hr:E_UNEXPECTED;
@@ -139,6 +215,7 @@ static HRESULT Open(UINT64 address,Session& session) {
     if(FAILED(hr)) return hr;
     result.Reset();hr=Await(operation.Get(),&result);if(FAILED(hr)) return hr;
     vector.Reset();hr=ResultVector(result.Get(),&vector,&count);if(FAILED(hr)) return hr;
+    session.Diagnostics.Stage=STADIA_GATT_STAGE_CHARACTERISTICS;
     GUID reportUuid=BluetoothUuid(0x2a4d);
     for(UINT32 i=0;i<count;i++) {
         CharacteristicInfo info={};
@@ -148,6 +225,7 @@ static HRESULT Open(UINT64 address,Session& session) {
         ComPtr<IInspectable> characteristic;
         hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,const CharacteristicInfo*,IInspectable**)>(service.Get(),12)(service.Get(),&info,&characteristic);
         if(FAILED(hr) || !characteristic) return FAILED(hr)?hr:E_UNEXPECTED;
+        session.Diagnostics.Stage=STADIA_GATT_STAGE_REPORT_REF;
         UCHAR id=0,type=0;hr=ReadReportReference(discovery.Get(),characteristic.Get(),info,&id,&type);
         if(FAILED(hr)) return hr;
         if(id!=5 || type!=2) continue;
@@ -157,15 +235,19 @@ static HRESULT Open(UINT64 address,Session& session) {
         // original typed interface facet rather than resolving its COM identity.
         session.Characteristic=characteristic;
         session.Diagnostics.ValueHandle=info.ValueHandle;session.Diagnostics.ReportId=id;session.Diagnostics.ReportType=type;
+        session.Diagnostics.Stage=STADIA_GATT_STAGE_READY;
         return S_OK;
     }
     return HRESULT_FROM_WIN32(ERROR_NOT_FOUND);
 }
 extern "C" HRESULT StadiaPrivateGattOpen(UINT64 address,void** output,STADIA_GATT_DIAGNOSTICS* diagnostics) {
     if(!output || !diagnostics || !address) return E_INVALIDARG;
-    *output=nullptr;*diagnostics={};Apartment apartment;
+    *output=nullptr;*diagnostics={};
+    diagnostics->Stage=STADIA_GATT_STAGE_START;
+    Apartment apartment;
     HRESULT hr=apartment.Check();if(FAILED(hr)) {diagnostics->OpenStatus=hr;return hr;}
     std::unique_ptr<Session> session(new(std::nothrow) Session);if(!session) return E_OUTOFMEMORY;
+    session->Diagnostics.Stage=STADIA_GATT_STAGE_START;
     hr=Open(address,*session);session->Diagnostics.OpenStatus=hr;*diagnostics=session->Diagnostics;
     if(SUCCEEDED(hr)) *output=session.release();return hr;
 }

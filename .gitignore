@@ -1,14 +1,36 @@
+# Build scratch (WDK download, staging, screenshots, local backups)
 .build/
-release/
 driver/out/
+release/
+obj/
+bin/
+
+# Agent workspace, editor and OS artifacts
+.workbuddy/
+.vs/
+.vscode/
+.idea/
+__pycache__/
+*.pyc
 *.obj
 *.pdb
-*.exe
-*.dll
-*.lib
+*.ilk
 *.exp
-*.ico
-*.cat
+*.lib
+*.log
+*.tmp
+*.user
+*.suo
+*.cache
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Signing material (never commit certificates or private keys)
 *.cer
 *.pfx
-*.log
+*.cat
+
+# NOTE: dist/ is intentionally tracked. It holds the prebuilt binaries
+# distributed with this hotfix branch; see RELEASE_NOTES.md. Do not add
+# *.exe / *.dll / *.ico ignore rules here or those files will disappear.

@@ -1,0 +1,26 @@
+# Normalize text on commit, keep binary assets byte-for-byte.
+* text=auto
+
+*.cs       text
+*.cpp      text
+*.h        text
+*.ps1      text
+*.py       text
+*.inf      text
+*.tsv      text
+*.config   text
+*.manifest text
+*.md       text
+*.svg      text
+*.patch    text
+LICENSE    text
+
+*.exe      binary
+*.dll      binary
+*.ico      binary
+*.png      binary
+*.zip      binary
+
+# Release output must stay byte-for-byte identical: the INF/config/hash files
+# under dist/ use CRLF and are covered by SHA256SUMS.txt.
+dist/** -text

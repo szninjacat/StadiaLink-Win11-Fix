@@ -429,6 +429,11 @@ GetFeature(PDEVICE_CONTEXT Context, WDFREQUEST Request)
     RtlCopyMemory(report + 54,&Context->ConfigurationPersistenceStatus,sizeof(NTSTATUS));
     report[59]=1; // Saturating motor gain up to 200 percent.
     report[58]=1; // Raw, bounded motor preview without changing configuration.
+    // Private GATT open stage and the device-interface IID that was selected.
+    // Bytes 60..63 were free, so neither the report length nor any existing
+    // field moves.
+    report[60]=(UCHAR)Context->PrivateGattDiagnostics.Stage;
+    report[61]=(UCHAR)Context->PrivateGattDiagnostics.IidIndex;
     ReleaseSRWLockShared(&Context->Lock);
     return CopyToRequest(Request, report, sizeof(report));
 }

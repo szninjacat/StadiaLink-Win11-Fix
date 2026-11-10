@@ -5,8 +5,10 @@
   <p>Stadia-Controller für Windows 11 x64 konfigurieren · Version 1.0.2</p>
   <p><a href="https://github.com/minysito/StadiaLink/releases/latest"><strong>⬇ Herunterladen</strong></a> · <a href="https://github.com/minysito/StadiaLink/issues">Problem melden</a> · <a href="LICENSE">GPL-3.0</a></p>
   <p>🪟 Windows 11 x64 &nbsp; · &nbsp; 🎮 XInput &nbsp; · &nbsp; 🔗 USB + Bluetooth</p>
-  <p><a href="README.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <a href="README.en.md"><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</a> &nbsp; | &nbsp; <a href="README.fr.md"><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</a> &nbsp; | &nbsp; <strong><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</strong></p>
+  <p><a href="README.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <a href="README.en.md"><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</a> &nbsp; | &nbsp; <a href="README.fr.md"><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</a> &nbsp; | &nbsp; <strong><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</strong> &nbsp; | &nbsp; <a href="README.zh-CN.md">🇨🇳 简体中文</a></p>
 </div>
+
+> **Hotfix-Branch (2026-11-09)** — behebt Bluetooth-Vibration unter Windows 11 23H2, fügt vereinfachtes Chinesisch als Standardsprache hinzu und sorgt dafür, dass der Schließen-Button (und Alt+F4) das Fenster in den Infobereich minimiert statt das Programm zu beenden. Siehe [RELEASE_NOTES.md](RELEASE_NOTES.md) und [README.zh-CN.md](README.zh-CN.md).
 
 ---
 

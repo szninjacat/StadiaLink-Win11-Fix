@@ -93,6 +93,8 @@ function Read-Status($handle) {
         PrivateGattWrites = [BitConverter]::ToUInt32($report, 37)
         PrivateGattStops = [BitConverter]::ToUInt32($report, 41)
         BluetoothAddress = [BitConverter]::ToUInt64($report, 45)
+        PrivateGattStage = $report[60]
+        PrivateGattIid = $report[61]
     }
 }
 
@@ -103,7 +105,29 @@ try {
     if ($status.RumbleFailed) { $text += ', last rumble write failed' }
     if ($status.Error) { $text += ', last error 0x{0:X8}' -f $status.Error }
     "Driver: $text"
-    if ($status.PrivateGattProbeRan) { 'Private GATT probe in UMDF host: 0x{0:X8}' -f $status.PrivateGattProbeStatus }
+    if ($status.PrivateGattProbeRan) {
+        'Private GATT probe in UMDF host: 0x{0:X8}' -f $status.PrivateGattProbeStatus
+        $stageNames = @{
+            1 = 'WinRT apartment'; 2 = 'activation factory'; 3 = 'CreateAsync';
+            4 = 'await create'; 5 = 'device QueryInterface'; 6 = 'HID service enumeration';
+            7 = 'service object'; 8 = 'discovery object'; 9 = 'characteristics';
+            10 = 'Report Reference'; 127 = 'ready'
+        }
+        $stage = [int]$status.PrivateGattStage
+        $stageText = if ($stage -eq 0) { 'unavailable (driver built without stage diagnostics)' }
+                     elseif ($stageNames.ContainsKey($stage)) { $stageNames[$stage] }
+                     else { 'unknown' }
+        $iid = [int]$status.PrivateGattIid
+        $iidText = if ($iid -eq 0) { 'none' }
+                   elseif ($iid -eq 1) { 'known IID #1 (Windows 26200+)' }
+                   elseif ($iid -eq 2) { 'known IID #2 (Windows 22631)' }
+                   elseif ($iid -ge 128) { "runtime-discovered (index $iid)" }
+                   else { "index $iid" }
+        'Private GATT stage: {0} ({1}), device IID: {2}' -f $stage,$stageText,$iidText
+        if ($stage -eq 5 -and $status.PrivateGattProbeStatus -ne 0) {
+            '  -> The private GATT device interface does not match this Windows build.'
+        }
+    }
     'Private GATT: address={0:X12} report={1} type={2} value=0x{3:X4} writes={4} stops={5} writeHRESULT=0x{6:X8}' -f $status.BluetoothAddress,$status.PrivateGattReportId,$status.PrivateGattReportType,$status.PrivateGattValueHandle,$status.PrivateGattWrites,$status.PrivateGattStops,$status.PrivateGattWriteStatus
 
     if ($Watch) {

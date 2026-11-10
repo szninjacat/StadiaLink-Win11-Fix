@@ -5,8 +5,10 @@
   <p>Configuration de la manette Stadia pour Windows 11 x64 · Version 1.0.2</p>
   <p><a href="https://github.com/minysito/StadiaLink/releases/latest"><strong>⬇ Télécharger</strong></a> · <a href="https://github.com/minysito/StadiaLink/issues">Signaler un problème</a> · <a href="LICENSE">GPL-3.0</a></p>
   <p>🪟 Windows 11 x64 &nbsp; · &nbsp; 🎮 XInput &nbsp; · &nbsp; 🔗 USB + Bluetooth</p>
-  <p><a href="README.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <a href="README.en.md"><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</a> &nbsp; | &nbsp; <strong><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</strong> &nbsp; | &nbsp; <a href="README.de.md"><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</a></p>
+  <p><a href="README.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <a href="README.en.md"><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</a> &nbsp; | &nbsp; <strong><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</strong> &nbsp; | &nbsp; <a href="README.de.md"><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</a> &nbsp; | &nbsp; <a href="README.zh-CN.md">🇨🇳 简体中文</a></p>
 </div>
+
+> **Branche corrective (2026-11-09)** — corrige les vibrations Bluetooth sous Windows 11 23H2, ajoute le chinois simplifié comme langue par défaut et fait que le bouton de fermeture (ainsi qu'Alt+F4) réduit l'application dans la zone de notification au lieu de la quitter. Voir [RELEASE_NOTES.md](RELEASE_NOTES.md) et [README.zh-CN.md](README.zh-CN.md).
 
 ---
 
