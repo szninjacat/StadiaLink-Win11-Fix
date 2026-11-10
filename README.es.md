@@ -3,7 +3,7 @@
   <h1>StadiaLink</h1>
   <p><strong>Tu Stadia. A tu manera.</strong></p>
   <p>Configuración del mando Stadia para Windows 11 x64 · Versión 1.0.2</p>
-  <p><a href="https://github.com/minysito/StadiaLink/releases/latest"><strong>⬇ Descargar</strong></a> · <a href="https://github.com/minysito/StadiaLink/issues">Comunicar un problema</a> · <a href="LICENSE">GPL-3.0</a></p>
+  <p><a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/tag/v1.0.2-hotfix"><strong>⬇ Descargar</strong></a> · <a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/issues">Comunicar un problema</a> · <a href="LICENSE">GPL-3.0</a></p>
   <p>🪟 Windows 11 x64 &nbsp; · &nbsp; 🎮 XInput &nbsp; · &nbsp; 🔗 USB + Bluetooth</p>
   <p><strong><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</strong> &nbsp; | &nbsp; <a href="README.en.md"><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</a> &nbsp; | &nbsp; <a href="README.fr.md"><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</a> &nbsp; | &nbsp; <a href="README.de.md"><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</a> &nbsp; | &nbsp; <a href="README.zh-CN.md">🇨🇳 简体中文</a></p>
 </div>
@@ -26,7 +26,7 @@
 
 Ejecuta `StadiaLink.Setup.exe`. La instalación del controlador requiere permiso de administrador. El instalador incluye sus componentes y funciona sin Internet. Empareja el mando desde los ajustes Bluetooth de Windows o conéctalo por USB.
 
-Descarga el instalador desde [Releases](https://github.com/minysito/StadiaLink/releases/latest). Para Bluetooth, el mando debe tener el firmware Bluetooth instalado; StadiaLink no modifica su firmware. No requiere emuladores de mando ni runtimes adicionales de terceros: utiliza .NET Framework 4.8 y componentes de Windows.
+Descarga el instalador desde [Releases](https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/tag/v1.0.2-hotfix). Para Bluetooth, el mando debe tener el firmware Bluetooth instalado; StadiaLink no modifica su firmware. No requiere emuladores de mando ni runtimes adicionales de terceros: utiliza .NET Framework 4.8 y componentes de Windows.
 
 Comprueba la descarga comparando el resultado con `SHA256SUMS.txt` de la misma versión:
 
@@ -49,7 +49,7 @@ Get-FileHash .\StadiaLink.Setup.exe -Algorithm SHA256
 Abre Windows PowerShell en una carpeta de trabajo. Compilar no requiere permisos de administrador; instalar el controlador sí.
 
 ```powershell
-git clone https://github.com/minysito/StadiaLink.git
+git clone https://github.com/szninjacat/StadiaLink-Win11-Fix.git
 cd StadiaLink
 
 # Si los scripts están bloqueados, solo para esta sesión.
@@ -113,7 +113,7 @@ Si aparece **Batería: no disponible**, no se ha podido consultar el nivel y no 
 
 ## 💬 Problemas, contribuciones y desinstalación
 
-Abre un [issue](https://github.com/minysito/StadiaLink/issues) indicando versión de Windows, versión de la app, USB o Bluetooth y pasos para reproducir el fallo. El registro de instalación está en `%LOCALAPPDATA%\StadiaStudio\logs\driver-install.log`; revisa y elimina información personal antes de adjuntarlo.
+Abre un [issue](https://github.com/szninjacat/StadiaLink-Win11-Fix/issues) indicando versión de Windows, versión de la app, USB o Bluetooth y pasos para reproducir el fallo. El registro de instalación está en `%LOCALAPPDATA%\StadiaStudio\logs\driver-install.log`; revisa y elimina información personal antes de adjuntarlo.
 
 Las contribuciones mediante pull request son bienvenidas. Incluye los pasos de comprobación y ejecuta `tests/run.ps1` cuando cambies la configuración o la traducción de entradas. No subas dependencias descargadas, binarios generados, perfiles personales ni material de investigación de firmware.
 

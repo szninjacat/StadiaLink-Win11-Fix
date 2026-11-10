@@ -3,7 +3,7 @@
   <h1>StadiaLink</h1>
   <p><strong>你的 Stadia 手柄，由你定义。</strong></p>
   <p>Windows 11 x64 上的 Stadia 手柄配置工具 · 版本 1.0.2</p>
-  <p><a href="https://github.com/minysito/StadiaLink/releases/latest"><strong>⬇ 下载</strong></a> · <a href="https://github.com/minysito/StadiaLink/issues">反馈问题</a> · <a href="LICENSE">GPL-3.0</a></p>
+  <p><a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/tag/v1.0.2-hotfix"><strong>⬇ 下载</strong></a> · <a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/issues">反馈问题</a> · <a href="LICENSE">GPL-3.0</a></p>
   <p>🪟 Windows 11 x64 &nbsp; · &nbsp; 🎮 XInput &nbsp; · &nbsp; 🔗 USB + 蓝牙</p>
   <p><a href="README.es.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <a href="README.en.md"><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</a> &nbsp; | &nbsp; <a href="README.fr.md"><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</a> &nbsp; | &nbsp; <a href="README.de.md"><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</a> &nbsp; | &nbsp; <strong>🇨🇳 简体中文</strong></p>
 </div>
@@ -24,7 +24,7 @@
 
 ## 🚀 安装
 
-从 [Releases](https://github.com/minysito/StadiaLink/releases/latest) 下载 `StadiaLink.Setup.exe` 运行，并在提示时为驱动安装授予管理员权限。通过 USB 连接手柄，或在 Windows 蓝牙设置中配对后开机，StadiaLink 会自动识别。安装包内含全部组件与对应源码，可离线安装。
+从 [Releases](https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/tag/v1.0.2-hotfix) 下载 `StadiaLink.Setup.exe` 运行，并在提示时为驱动安装授予管理员权限。通过 USB 连接手柄，或在 Windows 蓝牙设置中配对后开机，StadiaLink 会自动识别。安装包内含全部组件与对应源码，可离线安装。
 
 蓝牙连接要求手柄本身已具备蓝牙固件，StadiaLink 不会修改固件。程序仅依赖 .NET Framework 4.8 与 Windows 自带组件，不需要第三方手柄模拟器或额外运行时。
 
@@ -51,7 +51,7 @@ Get-FileHash .\StadiaLink.Setup.exe -Algorithm SHA256
 在工作目录打开 Windows PowerShell。编译不需要管理员权限，安装驱动才需要。
 
 ```powershell
-git clone https://github.com/minysito/StadiaLink.git
+git clone https://github.com/szninjacat/StadiaLink-Win11-Fix.git
 cd StadiaLink
 
 # 若脚本被阻止执行，仅对本次会话生效。
@@ -141,7 +141,7 @@ python .\tests\probe-private-gatt.py     # 只读枚举本机私有接口 IID
 
 ## 💬 问题反馈、贡献与卸载
 
-提交 [issue](https://github.com/minysito/StadiaLink/issues) 时请附上 Windows 版本、应用版本、USB 或蓝牙连接方式及复现步骤。安装日志位于 `%LOCALAPPDATA%\StadiaStudio\logs\driver-install.log`，分享前请删除个人信息。
+提交 [issue](https://github.com/szninjacat/StadiaLink-Win11-Fix/issues) 时请附上 Windows 版本、应用版本、USB 或蓝牙连接方式及复现步骤。安装日志位于 `%LOCALAPPDATA%\StadiaStudio\logs\driver-install.log`，分享前请删除个人信息。
 
 欢迎 pull request：请说明验证步骤，改动配置或输入翻译时运行 `tests/run.ps1`。不要提交下载的依赖、生成的二进制、个人配置文件或固件研究材料。
 

