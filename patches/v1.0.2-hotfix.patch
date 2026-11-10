@@ -778,7 +778,7 @@ index 76214a3..21b646e 100644
  foreach($name in @('app','driver','tests')){
      $target=Join-Path $sourceStage $name
 diff --git a/driver/build.ps1 b/driver/build.ps1
-index 1a28450..50bc888 100644
+index 1a28450..ba3609d 100644
 --- a/driver/build.ps1
 +++ b/driver/build.ps1
 @@ -30,12 +30,16 @@ if ($resolvedOut -ine $expectedOut -or (Split-Path $resolvedOut -Parent) -ine [I
@@ -804,11 +804,27 @@ index 1a28450..50bc888 100644
  }
  
  # hidport.h lives among the kernel headers; stage it alone so that the rest of
+@@ -44,7 +48,14 @@ Copy-Item "$wdk\Include\$sdkVersion\km\hidport.h" $obj
+ 
+ $minor = $umdfVersion.Split('.')[1]
+ $sources = 'winstadia.c', 'stadia.c', 'settings.c', 'usb.c', 'bluetooth.c' | ForEach-Object { "$PSScriptRoot\$_" }
+-& cl /nologo /W4 /O2 /MT /EHsc /std:c++17 /c /D UNICODE /D _UNICODE /D _WIN32_WINNT=0x0A00 /Fo"$obj\private-gatt.obj" "$PSScriptRoot\private-gatt.cpp"
++# Normal builds never call an ABI-unverified IID. Opt in only for a throwaway
++# test build on a new Windows version (see docs/COMPATIBILITY.md).
++$unverifiedIidDefine = @()
++if ($env:STADIALINK_ALLOW_UNVERIFIED_IID -eq '1') {
++    $unverifiedIidDefine = @('/DSTADIALINK_ALLOW_UNVERIFIED_IID=1')
++    Write-Host 'WARNING: unverified IID auto-selection enabled (test builds only)'
++}
++& cl /nologo /W4 /O2 /MT /EHsc /std:c++17 /c /D UNICODE /D _UNICODE /D _WIN32_WINNT=0x0A00 @unverifiedIidDefine /Fo"$obj\private-gatt.obj" "$PSScriptRoot\private-gatt.cpp"
+ if ($LASTEXITCODE) { throw 'private GATT probe compiling failed' }
+ & cl /nologo /W4 /O2 /MT /LD /std:c17 `
+     /D UMDF_VERSION_MAJOR=2 /D UMDF_VERSION_MINOR=$minor /D UMDF_USING_NTSTATUS `
 diff --git a/driver/private-gatt.cpp b/driver/private-gatt.cpp
-index 0ff947a..dc99e3e 100644
+index 0ff947a..6af531f 100644
 --- a/driver/private-gatt.cpp
 +++ b/driver/private-gatt.cpp
-@@ -1,5 +1,14 @@
+@@ -1,5 +1,16 @@
  // Native Stadia rumble transport. Private ABI recovered from the installed
  // Microsoft.Bluetooth.Service and HidOverGatt public symbols (Windows 26200).
 +//
@@ -818,12 +834,14 @@ index 0ff947a..dc99e3e 100644
 +// 26200 IID on 22631 fails with E_NOINTERFACE (0x80004002), which is the
 +// "no vibration over Bluetooth" symptom. The statics IID above it is shared
 +// by both builds, so only the device facet has to be selected per build.
-+// Known IIDs are tried first; an unknown build falls back to asking the
-+// created object which private interfaces it actually implements.
++// Known IIDs are tried first. For any other build the driver enumerates the
++// object's private interfaces, reports them for diagnosis, and fails closed:
++// a matching IID does not prove that vtable slots 11/14 still mean what they
++// used to. See docs/COMPATIBILITY.md for the ABI validation procedure.
  #define WIN32_LEAN_AND_MEAN
  #include "private-gatt.h"
  #include <roapi.h>
-@@ -8,6 +17,7 @@
+@@ -8,11 +19,19 @@
  #include <asyncinfo.h>
  #include <windows.storage.streams.h>
  #include <robuffer.h>
@@ -831,7 +849,19 @@ index 0ff947a..dc99e3e 100644
  #include <wrl/client.h>
  #include <wrl/wrappers/corewrappers.h>
  #include <new>
-@@ -37,7 +47,7 @@ struct Apartment {
+ #include <memory>
+ 
++// Safety switch. Unverified IIDs are never used in a normal build. Define this
++// to 1 only for a throwaway test build on a new Windows version, after reading
++// docs/COMPATIBILITY.md; even then a single unambiguous candidate is required.
++#ifndef STADIALINK_ALLOW_UNVERIFIED_IID
++#define STADIALINK_ALLOW_UNVERIFIED_IID 0
++#endif
++
+ using Microsoft::WRL::ComPtr;
+ using Microsoft::WRL::Wrappers::HStringReference;
+ using ABI::Windows::Storage::Streams::IBuffer;
+@@ -37,22 +56,32 @@ struct Apartment {
      HRESULT Check() const {return Status==RPC_E_CHANGED_MODE?S_OK:Status;}
  };
  struct Session {
@@ -840,7 +870,37 @@ index 0ff947a..dc99e3e 100644
      ComPtr<IInspectable> Characteristic;
      GUID CharacteristicIID={};
      STADIA_GATT_DIAGNOSTICS Diagnostics={};
-@@ -74,18 +84,80 @@ static HRESULT ResultVector(IInspectable* result,IInspectable** vector,UINT32* c
+ };
+-static HRESULT Await(IInspectable* operation,IInspectable** result) {
++static HRESULT Await(IInspectable* operation,IInspectable** result,ULONG* asyncStage=nullptr) {
+     *result=nullptr;if(!operation) return E_UNEXPECTED;
++    if(asyncStage) *asyncStage=STADIA_GATT_ASYNC_NONE;
+     ComPtr<ABI::Windows::Foundation::IAsyncInfo> info;
+     HRESULT hr=operation->QueryInterface(IID_PPV_ARGS(&info));
+-    if(FAILED(hr)) return hr;
++    if(FAILED(hr)) {if(asyncStage) *asyncStage=STADIA_GATT_ASYNC_INFO_QI;return hr;}
+     AsyncStatus status=Started;DWORD start=GetTickCount();
+     while(SUCCEEDED(hr=info->get_Status(&status)) && status==Started && GetTickCount()-start<2000) Sleep(2);
+-    if(SUCCEEDED(hr) && status==Completed)
++    if(FAILED(hr)) {if(asyncStage) *asyncStage=STADIA_GATT_ASYNC_STATUS;}
++    else if(status==Started) {info->Cancel();hr=HRESULT_FROM_WIN32(ERROR_TIMEOUT);if(asyncStage) *asyncStage=STADIA_GATT_ASYNC_TIMEOUT;}
++    else if(status==Completed) {
+         hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,IInspectable**)>(operation,8)(operation,result);
+-    else if(status==Started) {info->Cancel();hr=HRESULT_FROM_WIN32(ERROR_TIMEOUT);}
+-    else if(SUCCEEDED(hr)) {info->get_ErrorCode(&hr);if(SUCCEEDED(hr)) hr=E_FAIL;}
++        if(FAILED(hr) && asyncStage) *asyncStage=STADIA_GATT_ASYNC_RESULTS;
++    }
++    else {
++        // get_Status failures, cancellations and async errors used to be
++        // collapsed into ERROR_TIMEOUT. Report them distinctly.
++        HRESULT error=E_FAIL;info->get_ErrorCode(&error);
++        hr=FAILED(error)?error:E_FAIL;
++        if(asyncStage) *asyncStage=STADIA_GATT_ASYNC_ERROR;
++    }
+     info->Close();return hr;
+ }
+ static HRESULT CheckCommunication(IInspectable* result) {
+@@ -74,26 +103,113 @@ static HRESULT ResultVector(IInspectable* result,IInspectable** vector,UINT32* c
      if(SUCCEEDED(hr) && *count>128) return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
      return hr;
  }
@@ -849,8 +909,8 @@ index 0ff947a..dc99e3e 100644
 +// Each IID was read from the inbox HidOverGatt.dll of its build, where it sits
 +// next to the statics IID that both builds share.
 +static const GUID DeviceIids[] = {
-+    {0x6bbede1f,0x797f,0x5c17,{0x8a,0xc7,0x3f,0x34,0x20,0x37,0xcb,0x59}}, // Windows 26200+
-+    {0x0799a6a6,0xe942,0x5218,{0x8a,0x0e,0x7c,0x9b,0x99,0x6e,0x41,0x58}}, // Windows 22631 (23H2)
++    {0x6bbede1f,0x797f,0x5c17,{0x8a,0xc7,0x3f,0x34,0x20,0x37,0xcb,0x59}}, // Windows 26200 (verified)
++    {0x0799a6a6,0xe942,0x5218,{0x8a,0x0e,0x7c,0x9b,0x99,0x6e,0x41,0x58}}, // Windows 22631 (verified)
 +};
 +#define DEVICE_IID_COUNT (sizeof(DeviceIids)/sizeof(DeviceIids[0]))
 +
@@ -862,11 +922,19 @@ index 0ff947a..dc99e3e 100644
 +    return S_OK;
 +}
 +
-+// Last resort for an unrecognised Windows build: IInspectable::GetIids (slot 3)
-+// lists the private interfaces the created object really implements. WinRT
++// For an unrecognised Windows build: IInspectable::GetIids (slot 3) lists the
++// private interfaces the created object really implements. WinRT
 +// parameterized interfaces carry 0x5xxx in Data3, which separates them from
 +// IUnknown / IInspectable / IAgileObject / IStringable plumbing.
-+static HRESULT DiscoverDeviceIid(IInspectable* created,GUID* selected,ULONG* index) {
++//
++// That bit pattern is NOT proof of identity. If a future build exposes more
++// than one such interface, picking the first one and calling vtable slots
++// 11/14 on it can crash the UMDF host. Normal builds therefore only count the
++// candidates and fail closed. STADIALINK_ALLOW_UNVERIFIED_IID=1 re-enables
++// auto-selection for a throwaway test build, and only with one candidate.
++static HRESULT DiscoverDeviceIid(IInspectable* created,GUID* selected,ULONG* index,
++                                 ULONG* candidateCount) {
++    *candidateCount=0;
 +    ULONG count=0;GUID* iids=nullptr;
 +    HRESULT hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,ULONG*,GUID**)>(created,3)
 +        (created,&count,&iids);
@@ -875,7 +943,7 @@ index 0ff947a..dc99e3e 100644
 +        if(iids) CoTaskMemFree(iids);
 +        return E_UNEXPECTED;
 +    }
-+    hr=E_NOINTERFACE;
++    GUID first={};ULONG firstIndex=0;ULONG candidates=0;
 +    for(ULONG i=0;i<count;i++) {
 +        const GUID& candidate=iids[i];
 +        if((candidate.Data3 & 0xF000)!=0x5000) continue;
@@ -884,10 +952,18 @@ index 0ff947a..dc99e3e 100644
 +            if(IsEqualGUID(candidate,DeviceIids[k])) {known=true;break;}
 +        }
 +        if(known) continue;
-+        *selected=candidate;*index=0x80+i;hr=S_OK;break;
++        if(candidates==0) {first=candidate;firstIndex=i;}
++        candidates++;
 +    }
 +    CoTaskMemFree(iids);
-+    return hr;
++    *candidateCount=candidates;
++#if STADIALINK_ALLOW_UNVERIFIED_IID
++    if(candidates==1) {*selected=first;*index=0x80+firstIndex;return S_OK;}
++    return E_NOINTERFACE;
++#else
++    (void)selected;(void)index;(void)first;(void)firstIndex;
++    return HRESULT_FROM_WIN32(ERROR_NOT_SUPPORTED);
++#endif
 +}
 +
 +static HRESULT GetDevice(UINT64 address,IInspectable** device,Session& session) {
@@ -901,9 +977,12 @@ index 0ff947a..dc99e3e 100644
 +    session.Diagnostics.Stage=STADIA_GATT_STAGE_CREATE_ASYNC;
      RemoteAddress remote={address,1,0};ComPtr<IInspectable> operation;
      hr=factory->CreateAsync(remote,0,nullptr,nullptr,0,&operation);if(FAILED(hr)) return hr;
+-    ComPtr<IInspectable> created;hr=Await(operation.Get(),&created);if(FAILED(hr)) return hr;
 +
 +    session.Diagnostics.Stage=STADIA_GATT_STAGE_AWAIT_CREATE;
-     ComPtr<IInspectable> created;hr=Await(operation.Get(),&created);if(FAILED(hr)) return hr;
++    ComPtr<IInspectable> created;
++    hr=Await(operation.Get(),&created,&session.Diagnostics.AsyncStage);
++    if(FAILED(hr)) return hr;
      if(!created) return E_UNEXPECTED;
 -    const GUID iid={0x6bbede1f,0x797f,0x5c17,{0x8a,0xc7,0x3f,0x34,0x20,0x37,0xcb,0x59}};
 -    return created->QueryInterface(iid,(void**)device);
@@ -912,19 +991,45 @@ index 0ff947a..dc99e3e 100644
 +    for(size_t i=0;i<DEVICE_IID_COUNT;i++) {
 +        hr=QueryDeviceFacet(created.Get(),DeviceIids[i],device);
 +        if(SUCCEEDED(hr)) {session.Diagnostics.IidIndex=(ULONG)(i+1);return S_OK;}
++        // E_NOINTERFACE is the expected "this IID belongs to another build"
++        // result. Any other failure must not be masked by the next IID.
++        if(hr!=E_NOINTERFACE) return hr;
 +    }
-+    // Neither known build matched. Let the object describe itself instead of
-+    // hard-failing forever on a future Windows update.
++    // No verified IID matched. Enumerate candidates for diagnosis, but do not
++    // call an unverified vtable from inside the UMDF host (see docs/COMPATIBILITY.md).
 +    GUID discovered;ULONG index=0;
-+    hr=DiscoverDeviceIid(created.Get(),&discovered,&index);
-+    if(FAILED(hr)) return hr;
++    hr=DiscoverDeviceIid(created.Get(),&discovered,&index,
++                         &session.Diagnostics.CandidateCount);
++    if(FAILED(hr)) {
++        session.Diagnostics.Stage=STADIA_GATT_STAGE_IID_UNVERIFIED;
++        return hr;
++    }
 +    hr=QueryDeviceFacet(created.Get(),discovered,device);
 +    if(SUCCEEDED(hr)) session.Diagnostics.IidIndex=index;
 +    return hr;
  }
- static HRESULT ReadReportReference(IInspectable* discovery,IInspectable* characteristic,const CharacteristicInfo& info,UCHAR* id,UCHAR* type) {
+-static HRESULT ReadReportReference(IInspectable* discovery,IInspectable* characteristic,const CharacteristicInfo& info,UCHAR* id,UCHAR* type) {
++static HRESULT ReadReportReference(IInspectable* discovery,IInspectable* characteristic,const CharacteristicInfo& info,UCHAR* id,UCHAR* type,ULONG* asyncStage) {
      GUID reference=BluetoothUuid(0x2908);
-@@ -117,7 +189,9 @@ static HRESULT ReadReportReference(IInspectable* discovery,IInspectable* charact
+     ComPtr<IInspectable> operation;
+     HRESULT hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,const CharacteristicInfo*,const GUID*,UINT32,IInspectable**)>(discovery,11)
+         (discovery,&info,&reference,0,&operation);
+     if(FAILED(hr)) return hr;
+-    ComPtr<IInspectable> result;hr=Await(operation.Get(),&result);if(FAILED(hr)) return hr;
++    ComPtr<IInspectable> result;hr=Await(operation.Get(),&result,asyncStage);if(FAILED(hr)) return hr;
+     ComPtr<IInspectable> vector;UINT32 count=0;hr=ResultVector(result.Get(),&vector,&count);if(FAILED(hr)) return hr;
+     if(count!=1) return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+     // Descriptor info is kept opaque; the exact value returned by discovery is
+@@ -105,7 +221,7 @@ static HRESULT ReadReportReference(IInspectable* discovery,IInspectable* charact
+     hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,const void*,UINT32,UINT32,IInspectable**)>(characteristic,9)
+         (characteristic,descriptor,0,0,&operation);
+     if(FAILED(hr)) return hr;
+-    result.Reset();hr=Await(operation.Get(),&result);if(FAILED(hr)) return hr;
++    result.Reset();hr=Await(operation.Get(),&result,asyncStage);if(FAILED(hr)) return hr;
+     hr=CheckCommunication(result.Get());if(FAILED(hr)) return hr;
+     ComPtr<IBuffer> buffer;
+     hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,IBuffer**)>(result.Get(),8)(result.Get(),&buffer);
+@@ -117,28 +233,33 @@ static HRESULT ReadReportReference(IInspectable* discovery,IInspectable* charact
      *id=bytes[0];*type=bytes[1];return S_OK;
  }
  static HRESULT Open(UINT64 address,Session& session) {
@@ -935,7 +1040,11 @@ index 0ff947a..dc99e3e 100644
      GUID hid=BluetoothUuid(0x1812);ComPtr<IInspectable> operation;
      hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,const GUID*,UINT32,IInspectable**)>(device.Get(),11)(device.Get(),&hid,0,&operation);
      if(FAILED(hr)) return hr;
-@@ -128,10 +202,12 @@ static HRESULT Open(UINT64 address,Session& session) {
+-    ComPtr<IInspectable> result;hr=Await(operation.Get(),&result);if(FAILED(hr)) return hr;
++    ComPtr<IInspectable> result;hr=Await(operation.Get(),&result,&session.Diagnostics.AsyncStage);if(FAILED(hr)) return hr;
+     ComPtr<IInspectable> vector;UINT32 count=0;hr=ResultVector(result.Get(),&vector,&count);if(FAILED(hr)) return hr;
+     if(count!=1) return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+     ServiceInfo serviceInfo={};
      hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,UINT32,ServiceInfo*)>(vector.Get(),6)(vector.Get(),0,&serviceInfo);
      if(FAILED(hr)) return hr;
      if(!IsEqualGUID(serviceInfo.Uuid,hid)) return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
@@ -948,20 +1057,22 @@ index 0ff947a..dc99e3e 100644
      ComPtr<IInspectable> discovery;
      hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,IInspectable**)>(service.Get(),11)(service.Get(),&discovery);
      if(FAILED(hr) || !discovery) return FAILED(hr)?hr:E_UNEXPECTED;
-@@ -139,6 +215,7 @@ static HRESULT Open(UINT64 address,Session& session) {
+     operation.Reset();hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,UINT32,IInspectable**)>(discovery.Get(),8)(discovery.Get(),0,&operation);
      if(FAILED(hr)) return hr;
-     result.Reset();hr=Await(operation.Get(),&result);if(FAILED(hr)) return hr;
+-    result.Reset();hr=Await(operation.Get(),&result);if(FAILED(hr)) return hr;
++    result.Reset();hr=Await(operation.Get(),&result,&session.Diagnostics.AsyncStage);if(FAILED(hr)) return hr;
      vector.Reset();hr=ResultVector(result.Get(),&vector,&count);if(FAILED(hr)) return hr;
 +    session.Diagnostics.Stage=STADIA_GATT_STAGE_CHARACTERISTICS;
      GUID reportUuid=BluetoothUuid(0x2a4d);
      for(UINT32 i=0;i<count;i++) {
          CharacteristicInfo info={};
-@@ -148,24 +225,29 @@ static HRESULT Open(UINT64 address,Session& session) {
+@@ -148,24 +269,29 @@ static HRESULT Open(UINT64 address,Session& session) {
          ComPtr<IInspectable> characteristic;
          hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,const CharacteristicInfo*,IInspectable**)>(service.Get(),12)(service.Get(),&info,&characteristic);
          if(FAILED(hr) || !characteristic) return FAILED(hr)?hr:E_UNEXPECTED;
+-        UCHAR id=0,type=0;hr=ReadReportReference(discovery.Get(),characteristic.Get(),info,&id,&type);
 +        session.Diagnostics.Stage=STADIA_GATT_STAGE_REPORT_REF;
-         UCHAR id=0,type=0;hr=ReadReportReference(discovery.Get(),characteristic.Get(),info,&id,&type);
++        UCHAR id=0,type=0;hr=ReadReportReference(discovery.Get(),characteristic.Get(),info,&id,&type,&session.Diagnostics.AsyncStage);
          if(FAILED(hr)) return hr;
          if(id!=5 || type!=2) continue;
          hr=RoGetAgileReference(AGILEREFERENCE_DEFAULT,__uuidof(IInspectable),device.Get(),&session.Device);if(FAILED(hr)) return hr;
@@ -990,11 +1101,20 @@ index 0ff947a..dc99e3e 100644
      hr=Open(address,*session);session->Diagnostics.OpenStatus=hr;*diagnostics=session->Diagnostics;
      if(SUCCEEDED(hr)) *output=session.release();return hr;
  }
+@@ -185,7 +311,7 @@ static HRESULT Write(Session& session,const UCHAR* report,size_t length) {
+     hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,UINT32,UINT32,IBuffer*,IInspectable**)>(characteristic.Get(),8)
+         (characteristic.Get(),1,0,buffer.Get(),&operation);
+     if(FAILED(hr)) return hr;
+-    ComPtr<IInspectable> result;hr=Await(operation.Get(),&result);if(FAILED(hr)) return hr;
++    ComPtr<IInspectable> result;hr=Await(operation.Get(),&result,&session.Diagnostics.AsyncStage);if(FAILED(hr)) return hr;
+     return CheckCommunication(result.Get());
+ }
+ extern "C" HRESULT StadiaPrivateGattWrite(void* opaque,const UCHAR* report,size_t length,STADIA_GATT_DIAGNOSTICS* diagnostics) {
 diff --git a/driver/private-gatt.h b/driver/private-gatt.h
-index dc30f79..2451169 100644
+index dc30f79..1b29939 100644
 --- a/driver/private-gatt.h
 +++ b/driver/private-gatt.h
-@@ -3,6 +3,26 @@
+@@ -3,6 +3,39 @@
  #ifdef __cplusplus
  extern "C" {
  #endif
@@ -1013,39 +1133,56 @@ index dc30f79..2451169 100644
 +    STADIA_GATT_STAGE_DISCOVERY       = 8,  // characteristic discovery object
 +    STADIA_GATT_STAGE_CHARACTERISTICS = 9,  // enumerate characteristics
 +    STADIA_GATT_STAGE_REPORT_REF      = 10, // read Report Reference descriptor
-+    STADIA_GATT_STAGE_READY           = 0x7F
++    STADIA_GATT_STAGE_IID_UNVERIFIED = 11, // no verified IID for this build; fail closed
++    STADIA_GATT_STAGE_READY          = 0x7F
 +};
 +
-+// IidIndex: 1..N = a known per-build IID, >=0x80 = discovered at runtime,
++// AsyncStage is reported separately from Stage: Await() is used at several
++// points in the open path, so a distinct field keeps the main stage intact.
++enum {
++    STADIA_GATT_ASYNC_NONE    = 0,
++    STADIA_GATT_ASYNC_INFO_QI = 1, // QueryInterface(IAsyncInfo)
++    STADIA_GATT_ASYNC_STATUS  = 2, // get_Status
++    STADIA_GATT_ASYNC_RESULTS = 3, // GetResults (slot 8)
++    STADIA_GATT_ASYNC_ERROR   = 4, // async ErrorCode / canceled
++    STADIA_GATT_ASYNC_TIMEOUT = 5
++};
++
++// IidIndex: 1..N = a known per-build IID, >=0x80 = discovered at runtime
++// (only possible in a build with STADIALINK_ALLOW_UNVERIFIED_IID=1),
 +// 0 = not resolved yet.
  typedef struct _STADIA_GATT_DIAGNOSTICS {
      HRESULT OpenStatus;
      HRESULT WriteStatus;
-@@ -11,7 +31,10 @@ typedef struct _STADIA_GATT_DIAGNOSTICS {
+@@ -11,7 +44,12 @@ typedef struct _STADIA_GATT_DIAGNOSTICS {
      USHORT ValueHandle;
      UCHAR ReportId;
      UCHAR ReportType;
 +    ULONG Stage;
 +    ULONG IidIndex;
++    ULONG CandidateCount; // unverified 0x5xxx IIDs seen on this build
++    ULONG AsyncStage;     // last Await() failure point, see STADIA_GATT_ASYNC_*
  } STADIA_GATT_DIAGNOSTICS;
 +
  HRESULT StadiaPrivateGattOpen(UINT64 Address, void **Session, STADIA_GATT_DIAGNOSTICS *Diagnostics);
  HRESULT StadiaPrivateGattWrite(void *Session, const UCHAR *Report, size_t Length, STADIA_GATT_DIAGNOSTICS *Diagnostics);
  void StadiaPrivateGattClose(void *Session);
 diff --git a/driver/status.ps1 b/driver/status.ps1
-index 360af9c..2af7e87 100644
+index 360af9c..e043174 100644
 --- a/driver/status.ps1
 +++ b/driver/status.ps1
-@@ -93,6 +93,8 @@ function Read-Status($handle) {
+@@ -93,6 +93,10 @@ function Read-Status($handle) {
          PrivateGattWrites = [BitConverter]::ToUInt32($report, 37)
          PrivateGattStops = [BitConverter]::ToUInt32($report, 41)
          BluetoothAddress = [BitConverter]::ToUInt64($report, 45)
 +        PrivateGattStage = $report[60]
 +        PrivateGattIid = $report[61]
++        PrivateGattCandidates = $report[62]
++        PrivateGattAsyncStage = $report[63]
      }
  }
  
-@@ -103,7 +105,29 @@ try {
+@@ -103,7 +107,42 @@ try {
      if ($status.RumbleFailed) { $text += ', last rumble write failed' }
      if ($status.Error) { $text += ', last error 0x{0:X8}' -f $status.Error }
      "Driver: $text"
@@ -1056,7 +1193,11 @@ index 360af9c..2af7e87 100644
 +            1 = 'WinRT apartment'; 2 = 'activation factory'; 3 = 'CreateAsync';
 +            4 = 'await create'; 5 = 'device QueryInterface'; 6 = 'HID service enumeration';
 +            7 = 'service object'; 8 = 'discovery object'; 9 = 'characteristics';
-+            10 = 'Report Reference'; 127 = 'ready'
++            10 = 'Report Reference'; 11 = 'no ABI-verified IID (fail-closed)'; 127 = 'ready'
++        }
++        $asyncNames = @{
++            0 = 'none'; 1 = 'IAsyncInfo QueryInterface'; 2 = 'get_Status';
++            3 = 'GetResults (slot 8)'; 4 = 'async ErrorCode'; 5 = 'timeout'
 +        }
 +        $stage = [int]$status.PrivateGattStage
 +        $stageText = if ($stage -eq 0) { 'unavailable (driver built without stage diagnostics)' }
@@ -1064,31 +1205,41 @@ index 360af9c..2af7e87 100644
 +                     else { 'unknown' }
 +        $iid = [int]$status.PrivateGattIid
 +        $iidText = if ($iid -eq 0) { 'none' }
-+                   elseif ($iid -eq 1) { 'known IID #1 (Windows 26200+)' }
-+                   elseif ($iid -eq 2) { 'known IID #2 (Windows 22631)' }
-+                   elseif ($iid -ge 128) { "runtime-discovered (index $iid)" }
++                   elseif ($iid -eq 1) { 'known IID #1 (Windows 26200, verified)' }
++                   elseif ($iid -eq 2) { 'known IID #2 (Windows 22631, verified)' }
++                   elseif ($iid -ge 128) { "runtime-discovered (index $iid, test build)" }
 +                   else { "index $iid" }
 +        'Private GATT stage: {0} ({1}), device IID: {2}' -f $stage,$stageText,$iidText
++        if ($status.PrivateGattAsyncStage -ne 0 -or $status.PrivateGattCandidates -ne 0) {
++            $asyncStage = [int]$status.PrivateGattAsyncStage
++            $asyncText = if ($asyncNames.ContainsKey($asyncStage)) { $asyncNames[$asyncStage] } else { 'unknown' }
++            '  async failure point: {0} ({1}); unverified IID candidates: {2}' -f $asyncStage,$asyncText,$status.PrivateGattCandidates
++        }
 +        if ($stage -eq 5 -and $status.PrivateGattProbeStatus -ne 0) {
 +            '  -> The private GATT device interface does not match this Windows build.'
++        }
++        if ($stage -eq 11) {
++            '  -> No ABI-verified device IID for this Windows build. Bluetooth rumble is disabled on purpose (fail-closed).'
++            '     Run tests/probe-private-gatt.py and follow docs/COMPATIBILITY.md before adding an IID.'
 +        }
 +    }
      'Private GATT: address={0:X12} report={1} type={2} value=0x{3:X4} writes={4} stops={5} writeHRESULT=0x{6:X8}' -f $status.BluetoothAddress,$status.PrivateGattReportId,$status.PrivateGattReportType,$status.PrivateGattValueHandle,$status.PrivateGattWrites,$status.PrivateGattStops,$status.PrivateGattWriteStatus
  
      if ($Watch) {
 diff --git a/driver/winstadia.c b/driver/winstadia.c
-index 1e7af9a..134f7e8 100644
+index 1e7af9a..29ac76e 100644
 --- a/driver/winstadia.c
 +++ b/driver/winstadia.c
-@@ -429,6 +429,11 @@ GetFeature(PDEVICE_CONTEXT Context, WDFREQUEST Request)
+@@ -429,6 +429,12 @@ GetFeature(PDEVICE_CONTEXT Context, WDFREQUEST Request)
      RtlCopyMemory(report + 54,&Context->ConfigurationPersistenceStatus,sizeof(NTSTATUS));
      report[59]=1; // Saturating motor gain up to 200 percent.
      report[58]=1; // Raw, bounded motor preview without changing configuration.
-+    // Private GATT open stage and the device-interface IID that was selected.
-+    // Bytes 60..63 were free, so neither the report length nor any existing
-+    // field moves.
++    // Private GATT diagnostics use bytes 60..63, which were free; neither
++    // the report length nor any existing field moves.
 +    report[60]=(UCHAR)Context->PrivateGattDiagnostics.Stage;
 +    report[61]=(UCHAR)Context->PrivateGattDiagnostics.IidIndex;
++    report[62]=(UCHAR)Context->PrivateGattDiagnostics.CandidateCount;
++    report[63]=(UCHAR)Context->PrivateGattDiagnostics.AsyncStage;
      ReleaseSRWLockShared(&Context->Lock);
      return CopyToRequest(Request, report, sizeof(report));
  }
@@ -1437,20 +1588,23 @@ index 0000000..64b6e40
 +    main()
 diff --git a/tests/probe-private-gatt.py b/tests/probe-private-gatt.py
 new file mode 100644
-index 0000000..5ed07d0
+index 0000000..686d34e
 --- /dev/null
 +++ b/tests/probe-private-gatt.py
-@@ -0,0 +1,334 @@
+@@ -0,0 +1,368 @@
 +#!/usr/bin/env python3
 +"""Probe the private WinRT GATT activation factory on the running Windows build.
 +
-+StadiaLink's driver/private-gatt.cpp hard-codes interface IIDs recovered from
-+Windows build 26200. This tool asks the real activation factory which interfaces
-+it actually implements on this machine, so the driver can be made
-+version-adaptive instead of guessing the private ABI.
++StadiaLink's driver/private-gatt.cpp pins two ABI-verified device interface
++IIDs (Windows 26200 and 22631) and fails closed on any other build. This tool
++asks the real activation factory which interfaces it implements on this
++machine, so a new build can be investigated without guessing the private ABI.
 +
 +Read-only: it activates the factory and calls IInspectable::GetIids only.
 +It never connects to a controller and never writes a GATT characteristic.
++The driver no longer auto-uses a discovered IID: a 0x5xxx Data3 value is only
++a candidate, never proof that vtable slots 11/14 still mean the same thing.
++See docs/COMPATIBILITY.md for the validation procedure.
 +With --deep it also inspects the factory vtable; it stops before calling into
 +a private interface when this process only received combase's generic
 +activation-factory proxy (the real facet is available inside the UMDF host).
@@ -1481,9 +1635,15 @@ index 0000000..5ed07d0
 +IID_ACTIVATION_FACTORY = "00000035-0000-0000-c000-000000000046"
 +IID_ASYNCINFO = "00000036-0000-0000-c000-000000000046"
 +
-+# Values hard-coded in driver/private-gatt.cpp, recovered from build 26200.
++# Values hard-coded in driver/private-gatt.cpp, verified on real machines.
 +IID_STATICS_26200 = "cbaa1a5f-dcef-508b-acc6-158f1e160c0f"
 +IID_DEVICE_26200 = "6bbede1f-797f-5c17-8ac7-3f342037cb59"
++IID_DEVICE_22631 = "0799a6a6-e942-5218-8a0e-7c9b996e4158"
++
++VERIFIED_DEVICE_IIDS = {
++    IID_DEVICE_26200: "VERIFIED device IID (Windows 26200)",
++    IID_DEVICE_22631: "VERIFIED device IID (Windows 22631 / 23H2)",
++}
 +
 +STD_IIDS = {
 +    IID_INSPECTABLE: "IInspectable",
@@ -1509,9 +1669,11 @@ index 0000000..5ed07d0
 +
 +
 +def guid_str(g):
-+    return "%08X-%04X-%04X-%s" % (
-+        g.Data1, g.Data2, g.Data3, "".join("%02X" % x for x in g.Data4)
-+    )
++    # Canonical 8-4-4-4-12 form. The old output omitted the dash inside Data4,
++    # so standard IIDs never matched STD_IIDS and every 0x5xxx IID looked like
++    # an unverified candidate - including the shared statics IID.
++    d4 = "".join("%02X" % x for x in g.Data4)
++    return "%08X-%04X-%04X-%s-%s" % (g.Data1, g.Data2, g.Data3, d4[:4], d4[4:])
 +
 +
 +def hr_text(value):
@@ -1627,13 +1789,28 @@ index 0000000..5ed07d0
 +    return os.path.basename(name.value)
 +
 +
++def iid_note(text):
++    """Explain an IID without ever implying a candidate is the device facet."""
++    low = text.lower()
++    notes = []
++    standard = STD_IIDS.get(low)
++    if standard:
++        notes.append(standard)
++    if low in VERIFIED_DEVICE_IIDS:
++        notes.append(VERIFIED_DEVICE_IIDS[low])
++    elif low == IID_STATICS_26200:
++        notes.append("shared statics IID")
++    elif (uuid.UUID(text).fields[2] & 0xF000) == 0x5000:
++        notes.append("0x5xxx parameterized IID (candidate, NOT verified)")
++    return " <- " + "; ".join(notes) if notes else ""
++
++
 +def dump_iids(obj, label):
 +    hr, iids = get_iids(obj)
 +    print("      %s GetIids : %s, %d interface(s)" % (label, hr_text(hr), len(iids)))
 +    for index, g in enumerate(iids):
 +        text = guid_str(g)
-+        note = STD_IIDS.get(text.lower(), "")
-+        print("        [%d] %s %s" % (index, text, ("<- " + note) if note else ""))
++        print("        [%d] %s%s" % (index, text, iid_note(text)))
 +    return hr == 0
 +
 +
@@ -1742,10 +1919,11 @@ index 0000000..5ed07d0
 +        return 1
 +
 +    probes = [
-+        ("statics IID hard-coded for build 26200", IID_STATICS_26200),
++        ("shared statics IID (26200 / 22631)", IID_STATICS_26200),
 +        ("IActivationFactory (standard)", IID_ACTIVATION_FACTORY),
 +        ("IInspectable (standard)", IID_INSPECTABLE),
-+        ("device IID hard-coded for build 26200", IID_DEVICE_26200),
++        ("VERIFIED device IID (Windows 26200)", IID_DEVICE_26200),
++        ("VERIFIED device IID (Windows 22631 / 23H2)", IID_DEVICE_22631),
 +    ]
 +
 +    for label, value in probes:
@@ -1761,15 +1939,22 @@ index 0000000..5ed07d0
 +            print("    GetIids        : %s, %d interface(s)" % (hr_text(hr2), len(iids)))
 +            for index, g in enumerate(iids):
 +                text = guid_str(g)
-+                note = STD_IIDS.get(text.lower(), "")
++                note = iid_note(text)
 +                if text.lower() == value.lower():
-+                    note = (note + " (requested)").strip()
-+                print("      [%d] %s %s" % (index, text, ("<- " + note) if note else ""))
++                    note += " (requested)"
++                print("      [%d] %s %s" % (index, text, note))
 +            RELEASE(vtable_slot(factory, 2))(factory)
 +
 +    ro.WindowsDeleteString(hs)
 +    print()
-+    print("Compare the IIDs above with the two hard-coded values in driver/private-gatt.cpp.")
++    print("Only the VERIFIED device IIDs above are used automatically by the driver.")
++    print("Device IIDs belong to the object returned by CreateAsync, not to the")
++    print("activation factory, so E_NOINTERFACE for them above is expected.")
++    print("A 0x5xxx parameterized IID is a candidate, NOT proof of the")
++    print("GattClientDevice device facet: vtable slots 11/14 must be validated on")
++    print("a real machine. On an unknown build the driver counts candidates")
++    print("(status report byte 62), reports stage 11 and fails closed.")
++    print("See docs/COMPATIBILITY.md before adding an IID to DeviceIids[].")
 +    return 0
 +
 +

@@ -12,6 +12,7 @@ Full notes (简体中文): [RELEASE_NOTES.md](RELEASE_NOTES.md) · Per-file chan
 - Added opt-in build switches `STADIALINK_VC_ENV_READY` and `STADIALINK_SKIP_STAGE_CLEANUP` for hosts/CI that cannot run `vcvars64.bat` or remove staging directories. Default behaviour is unchanged.
 - Fixed the window close button exiting the app: the × button and Alt+F4 now minimize to the notification area, while the tray exit item and automated tests terminate the process through `ForceClose()`. Draft-behaviour tests now cover the close button, system close and tray restore.
 - Shipped rebuilt prebuilt binaries and SHA-256 checksums in `dist/` (including the close-button fix).
+- Code-review hardening (2026-11-10): unverified device IIDs are no longer called automatically (fail-closed, stage 11, `STADIALINK_ALLOW_UNVERIFIED_IID=1` is a test-build-only opt-in); `QueryInterface` failures other than `E_NOINTERFACE` are propagated; `Await()` sub-stages and the unverified-candidate count are reported in status report bytes 62/63; `probe-private-gatt.py` now prints canonical GUIDs. Added [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) with the compatibility matrix and ABI validation procedure, and corrected `cd StadiaLink` to `cd StadiaLink-Win11-Fix` in all six READMEs. Windows 10 Bluetooth rumble is explicitly marked unverified. Verified behaviour on builds 22631 / 26200 is unchanged.
 
 ## 1.0.2
 

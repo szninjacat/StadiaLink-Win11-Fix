@@ -95,6 +95,8 @@ function Read-Status($handle) {
         BluetoothAddress = [BitConverter]::ToUInt64($report, 45)
         PrivateGattStage = $report[60]
         PrivateGattIid = $report[61]
+        PrivateGattCandidates = $report[62]
+        PrivateGattAsyncStage = $report[63]
     }
 }
 
@@ -111,7 +113,11 @@ try {
             1 = 'WinRT apartment'; 2 = 'activation factory'; 3 = 'CreateAsync';
             4 = 'await create'; 5 = 'device QueryInterface'; 6 = 'HID service enumeration';
             7 = 'service object'; 8 = 'discovery object'; 9 = 'characteristics';
-            10 = 'Report Reference'; 127 = 'ready'
+            10 = 'Report Reference'; 11 = 'no ABI-verified IID (fail-closed)'; 127 = 'ready'
+        }
+        $asyncNames = @{
+            0 = 'none'; 1 = 'IAsyncInfo QueryInterface'; 2 = 'get_Status';
+            3 = 'GetResults (slot 8)'; 4 = 'async ErrorCode'; 5 = 'timeout'
         }
         $stage = [int]$status.PrivateGattStage
         $stageText = if ($stage -eq 0) { 'unavailable (driver built without stage diagnostics)' }
@@ -119,13 +125,22 @@ try {
                      else { 'unknown' }
         $iid = [int]$status.PrivateGattIid
         $iidText = if ($iid -eq 0) { 'none' }
-                   elseif ($iid -eq 1) { 'known IID #1 (Windows 26200+)' }
-                   elseif ($iid -eq 2) { 'known IID #2 (Windows 22631)' }
-                   elseif ($iid -ge 128) { "runtime-discovered (index $iid)" }
+                   elseif ($iid -eq 1) { 'known IID #1 (Windows 26200, verified)' }
+                   elseif ($iid -eq 2) { 'known IID #2 (Windows 22631, verified)' }
+                   elseif ($iid -ge 128) { "runtime-discovered (index $iid, test build)" }
                    else { "index $iid" }
         'Private GATT stage: {0} ({1}), device IID: {2}' -f $stage,$stageText,$iidText
+        if ($status.PrivateGattAsyncStage -ne 0 -or $status.PrivateGattCandidates -ne 0) {
+            $asyncStage = [int]$status.PrivateGattAsyncStage
+            $asyncText = if ($asyncNames.ContainsKey($asyncStage)) { $asyncNames[$asyncStage] } else { 'unknown' }
+            '  async failure point: {0} ({1}); unverified IID candidates: {2}' -f $asyncStage,$asyncText,$status.PrivateGattCandidates
+        }
         if ($stage -eq 5 -and $status.PrivateGattProbeStatus -ne 0) {
             '  -> The private GATT device interface does not match this Windows build.'
+        }
+        if ($stage -eq 11) {
+            '  -> No ABI-verified device IID for this Windows build. Bluetooth rumble is disabled on purpose (fail-closed).'
+            '     Run tests/probe-private-gatt.py and follow docs/COMPATIBILITY.md before adding an IID.'
         }
     }
     'Private GATT: address={0:X12} report={1} type={2} value=0x{3:X4} writes={4} stops={5} writeHRESULT=0x{6:X8}' -f $status.BluetoothAddress,$status.PrivateGattReportId,$status.PrivateGattReportType,$status.PrivateGattValueHandle,$status.PrivateGattWrites,$status.PrivateGattStops,$status.PrivateGattWriteStatus

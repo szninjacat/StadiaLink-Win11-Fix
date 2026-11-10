@@ -48,7 +48,7 @@ Ouvrez Windows PowerShell dans un dossier de travail. La compilation ne nécessi
 
 ```powershell
 git clone https://github.com/szninjacat/StadiaLink-Win11-Fix.git
-cd StadiaLink
+cd StadiaLink-Win11-Fix
 
 # Si les scripts sont bloqués, uniquement pour cette session.
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
@@ -119,7 +119,7 @@ Le script demande les droits administrateur, retire les paquets de ce pilote et 
 
 ## 🤝 Compatibilité, crédits et licence
 
-La vibration Bluetooth utilise des interfaces privées de Windows, testées sur Windows 11 build **26200** ; les mises à jour peuvent les modifier. La prise audio fonctionne en USB. L'audio Bluetooth, l'activation du microphone intégré et du Wi-Fi ne sont pas proposés. Les temps mesurés concernent les requêtes HID et l'interface, pas la latence physique totale du jeu et de l'écran.
+La vibration Bluetooth utilise des interfaces privées de Windows, vérifiées sur machines réelles uniquement sous Windows 11 builds **26200** et **22631**. Les autres versions - y compris Windows 10 - ne sont installables qu'au niveau du framework UMDF 2.31 ; l'interface GATT privée n'y est pas vérifiée et son fonctionnement n'est pas garanti. Voir [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) pour la matrice et la procédure de validation. Les mises à jour système peuvent également modifier ces interfaces. La prise audio fonctionne en USB. L'audio Bluetooth, l'activation du microphone intégré et du Wi-Fi ne sont pas proposés. Les temps mesurés concernent les requêtes HID et l'interface, pas la latence physique totale du jeu et de l'écran.
 
 **Code tiers intégré : [aisk/WinStadia](https://github.com/aisk/WinStadia).** Il constitue la base du pilote natif inclus dans ce dépôt, avec les modifications de StadiaLink. Cette intégration comprend la structure UMDF, la traduction des entrées Stadia vers XInput et les transports USB/Bluetooth dans `driver/`, ainsi que les scripts et le fichier INF dérivés.
 

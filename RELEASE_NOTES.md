@@ -57,12 +57,12 @@ WPF 细节：`Closing` 事件里仅设置 `WindowState=Minimized` 会被关闭�
 
 | 文件 | 大小 (B) | SHA-256（前 16 位） | 说明 |
 | --- | --- | --- | --- |
-| `StadiaLink.Setup.exe` | 583,680 | `a0b148d37853a1ca` | 简体中文完整安装包（内嵌应用 + 驱动 + 原生库 + 源码，含关闭按钮修复） |
-| `StadiaLink.exe` | 251,392 | `e29be9999f3e425c1` | WPF 主程序 x64 |
-| `StadiaLink.Update.exe` | 505,344 | `1f3ee5d56e3f5e60` | 仅应用更新包 |
-| `StadiaDevice.dll` | 165,376 | `4d03b4637f013cce` | 原生电池读取库 |
-| `driver/winstadia.dll` | 145,920 | `09fde6d9d35c2f4b` | UMDF 驱动（含双 IID 与阶段诊断） |
-| `driver/winstadia.inf` | 3,969 | `252a3981089d8577` | `DriverVer=11/09/2026,22.52.7.585` |
+| `StadiaLink.Setup.exe` | 585,216 | `ef4060c407cb33cb` | 简体中文完整安装包（内嵌应用 + 驱动 + 原生库 + 源码，含关闭按钮修复与 2026-11-10 审查加固） | 简体中文完整安装包（内嵌应用 + 驱动 + 原生库 + 源码，含关闭按钮修复） |
+| `StadiaLink.exe` | 251,392 | `1d54f62807b844bb` | WPF 主程序 x64 | WPF 主程序 x64 |
+| `StadiaLink.Update.exe` | 506,880 | `745577536353f483` | 仅应用更新包 | 仅应用更新包 |
+| `StadiaDevice.dll` | 165,376 | `6600c5205022027d` | 原生电池读取库 | 原生电池读取库 |
+| `driver/winstadia.dll` | 145,920 | `3636af49dc046f1c` | UMDF 驱动（含双 IID、阶段诊断与失败关闭） | UMDF 驱动（含双 IID 与阶段诊断） |
+| `driver/winstadia.inf` | 3,969 | `0b111ac3ff72b84d` | `DriverVer=11/10/2026,18.46.2.678` |
 
 另含 2 个 `.exe.config` 及 `SHA256.txt` / `SHA256SUMS.txt`。完整哈希以 `dist/SHA256SUMS.txt` 为准，可用 `Get-FileHash -Algorithm SHA256` 复核。已从安装包内嵌的 `payload.zip` 中解出核对：`driver/pkg/winstadia.dll`、`driver/pkg/winstadia.inf` 与 `StadiaLink.exe` 均和 `dist/` 中的副本逐字节一致。
 
@@ -83,14 +83,14 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 
 ## 5. 验证结果
 
-- `driver/out/pkg/winstadia.dll` 同时含 26200 与 22631 两个设备 IID；Setup.exe 内嵌副本逐字节相同（清理 WDK 后重新编译，代码与 IID 未变，仅 PE 时间戳 / `DriverVer` 更新）。
+- `driver/out/pkg/winstadia.dll` 同时含 26200 与 22631 两个设备 IID，并含本次审查加固的 `ERROR_NOT_SUPPORTED` 失败关闭分支；Setup.exe 内嵌副本逐字节相同（2026-11-10 重新编译）。
 - `tests/run.ps1`：配置翻译 **4,864,527 次检查 PASS**、应用模型自测 PASS。
 - 应用 `--self-test` PASS（5 列翻译表完整、动态翻译正常）；安装器 `/languages-test` PASS（5 种语言全部渲染）。
 - **默认语言截图与显式设为 `zh` 的截图 SHA-256 完全相同**，界面文字全部简体中文，无西语残留（仅保留 StadiaLink / Windows / USB / x64 / GPLv3 等专有名词）。
 - 三个 exe 均为有效 x64 .NET 程序集，`StadiaDevice.dll` 为原生 x64 PE；哈希清单逐项一致。
 - 实机震动：`driver/status.ps1` 报告 `probeStatus=0x00000000`、`writeHRESULT=0x00000000`、`writes` 持续增长。
 - 关闭行为自测 PASS（`--draft-test`）：最小化、**×** 按钮、系统关闭三种入口都会驻留托盘，托盘恢复均正常。
-- 实时震动滑块测试在退出占用单实例锁的旧实例后重跑 PASS；全套应用与模型测试在最终 23:04 重建版上全部通过。
+- 实时震动滑块测试在退出占用单实例锁的旧实例后重跑 PASS；全套应用与模型测试在最终 2026-11-10 18:46 重建版上全部通过（配置翻译 4,864,527 次检查、应用模型自测、实时震动滑块测试均 PASS）。
 
 ## 6. 目录结构
 
@@ -103,6 +103,7 @@ driver/     UMDF 驱动源码、INF、安装与状态脚本
 tests/      测试与两个诊断/生成工具
 dist/       本次编译产物 + SHA-256 清单
 docs/CHANGES.md              逐文件改动说明与排除清单
+docs/COMPATIBILITY.md        兼容性矩阵、失败关闭说明与新增 IID 实机验证流程
 patches/v1.0.2-hotfix.patch  相对 1.0.2 的可 apply 代码补丁（15 个文本文件）
 ```
 
@@ -118,7 +119,25 @@ patches/v1.0.2-hotfix.patch  相对 1.0.2 的可 apply 代码补丁（15 个文�
 
 ## 8. 已知限制
 
-1. **跨任意 Windows 版本不保证**：蓝牙震动依赖未公开私有 ABI。`statics IID` 仅在 22631 / 26200 验证一致；运行时兜底只负责发现设备接口 IID，**不适配 vtable 方法顺序**。若未来 build 改了布局，代码仍按硬编码槽位调用，可能失败甚至影响 UMDF host。换系统后请先用 `tests/probe-private-gatt.py` 与 `driver/status.ps1` 的 Stage 判断：`5` 是 IID 问题，`6+` 是布局问题。
+1. **跨任意 Windows 版本不保证**：蓝牙震动依赖未公开私有 ABI。`statics IID` 仅在 22631 / 26200 验证一致；**未知 build 现在直接失败关闭**（阶段 `11`），不再自动调用未经 ABI 验证的设备接口，但 `GetIids` 也**不适配 vtable 方法顺序**，私有类本身可能被移除。**Windows 10 只有框架层面的可安装性**，私有 GATT 震动接口未验证、不承诺可用；矩阵见 [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)。换系统后请先用 `tests/probe-private-gatt.py` 与 `driver/status.ps1` 的 Stage 判断：`5` 是 IID 问题，`6+` 是布局问题，`11` 是缺少已验证 IID。
 2. 私有类 `GattClientDevice` 本身可能被移除或重构。
 3. 平台依赖：仅 **x64**、UMDF 2.31（Win10 1809+ / Win11）、.NET Framework 4.8.1、INF 固定匹配 `VID_18D1&PID_9400`。
 4. 驱动为**自签名**，未做微软签名；每台机器需重建证书信任，SmartScreen / Secure Boot 策略可能拦截。
+
+## 9. 代码审查后的加固（2026-11-10）
+
+按第三方代码审查结论修订。**22631 / 26200 两个已验证构建的行为完全不变**，改动只涉及未知 build 的回退路径、错误分类与诊断。
+
+| 审查项 | 处理 |
+| --- | --- |
+| 未知 IID 仅凭 `Data3 & 0xF000 == 0x5000` 猜设备接口并直接调用 | 改为失败关闭：只枚举并计数，阶段 `11`、返回 `ERROR_NOT_SUPPORTED`；仅当编译开关 `STADIALINK_ALLOW_UNVERIFIED_IID=1` 且候选恰好 1 个时才自动选择（测试构建专用，默认关闭） |
+| `QueryInterface` 失败原因被后续 IID 掩盖 | 只有 `E_NOINTERFACE` 继续尝试，其余 HRESULT 立即返回 |
+| Stage 4 把整个异步等待混在一起 | `Await()` 细分 `IAsyncInfo` QI / `get_Status` / `GetResults` / 异步错误 / 超时，写入第 63 字节；同时修正原先 `get_Status` 失败被误报为超时 |
+| 诊断数据可能误导用户 | 新增第 62 字节候选数、阶段 `11` 的可读提示；`status.ps1` 输出异步失败点；`probe-private-gatt.py` 的 GUID 改为标准 8-4-4-4-12，标准 IID 与共享 statics IID 不再被误标成「未验证候选」，并说明设备 IID 在 factory 上返回 `E_NOINTERFACE` 属预期 |
+| Windows 10 兼容性边界 | 新增 `docs/COMPATIBILITY.md`：正式兼容性矩阵、失败关闭说明、新增 IID 的实机 ABI 验证流程；6 语 README 明确 Windows 10 仅框架可安装、蓝牙震动未验证 |
+| 构建命令目录名 | 6 语 README 的 `cd StadiaLink` 修正为 `cd StadiaLink-Win11-Fix` |
+| 源码注释过度承诺 | `Windows 26200+` 改为 `Windows 26200 (verified)` |
+
+**仍未解决 / 不在本次范围**：没有 Windows 10 实机 IID 数据，也没有 22H2 / 24H2 的验证记录；这些版本需按 `docs/COMPATIBILITY.md` 第 4 节走完流程才能列入 `DeviceIids[]`。后续维护建议把驱动 ABI、界面本地化与其他功能修复拆成独立提交。本次加固单独成一次提交，不改写已有历史。
+
+本次修订后重新编译了驱动与安装包，`dist/`、SHA-256 清单与 Release 资产同步更新；USB 震动、输入与 XInput 翻译链路未改动。

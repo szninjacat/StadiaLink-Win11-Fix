@@ -2,7 +2,7 @@
 
 - **基线提交**：`bea80f3` — *Correct release version to 1.0.2*
 - **比较范围**：`app/`、`driver/`、`tests/`
-- **机器可读补丁**：[../patches/v1.0.2-hotfix.patch](../patches/v1.0.2-hotfix.patch)，15 个文本文件、约 172 KB，由真实 `git diff --cached --binary` 导出（含新增文件），无二进制块
+- **机器可读补丁**：[../patches/v1.0.2-hotfix.patch](../patches/v1.0.2-hotfix.patch)，15 个文本文件、约 180 KB，由真实 `git diff --cached --binary` 导出（含新增文件），无二进制块
 - **版本说明**：[../RELEASE_NOTES.md](../RELEASE_NOTES.md)
 
 本目录中的 `app/`、`driver/`、`tests/` **已经是改动后的源码**，无需再应用补丁。补丁用于代码审查，或把改动移植到一份干净的 1.0.2 checkout：
@@ -16,16 +16,16 @@ git apply patches/v1.0.2-hotfix.patch
 
 | 文件 | 改动摘要 |
 | --- | --- |
-| `driver/private-gatt.cpp` | 设备接口 IID 由单值改为 26200 / 22631 双值表并依次 `QueryInterface`；新增 `DiscoverDeviceIid()`，未知 build 用 `IInspectable::GetIids`（vtable 槽 3）按参数化接口特征挑选；`GetDevice`/`Open` 全链路写入 Stage；成功时记录 `IidIndex`；新增 `combaseapi.h` 以释放 `CoTaskMemFree` |
-| `driver/private-gatt.h` | 新增 `STADIA_GATT_STAGE_*`（1 起始 / 2 激活工厂 / 3 CreateAsync / 4 等待异步 / 5 设备 QI / 6–10 服务与特征发现 / 0x7F ready）与 `Stage`、`IidIndex` 字段 |
-| `driver/winstadia.c` | feature report 第 60、61 字节输出 Stage 与 IidIndex；报告长度、既有字段字节偏移均未变 |
-| `driver/status.ps1` | 读取并打印阶段名称与 IID 来源；Stage=5 且失败时提示私有接口与当前 Windows build 不匹配 |
+| `driver/private-gatt.cpp` | 设备接口 IID 由单值改为 26200 / 22631 双值表并依次 `QueryInterface`（只有 `E_NOINTERFACE` 才继续）；`DiscoverDeviceIid()` 对未知 build 只枚举、计数并失败关闭，不自动调用未验证 vtable；`Await()` 细分异步子阶段；`GetDevice`/`Open` 全链路写入 Stage；新增 `combaseapi.h` 以释放 `CoTaskMemFree` |
+| `driver/private-gatt.h` | 新增 `STADIA_GATT_STAGE_*`（1 起始 / 2 激活工厂 / 3 CreateAsync / 4 等待异步 / 5 设备 QI / 6–10 服务与特征发现 / 11 无已验证 IID / 0x7F ready）、`STADIA_GATT_ASYNC_*` 子阶段枚举与 `Stage`、`IidIndex`、`CandidateCount`、`AsyncStage` 字段 |
+| `driver/winstadia.c` | feature report 第 60–63 字节输出 Stage、IidIndex、CandidateCount 与 AsyncStage；报告长度、既有字段字节偏移均未变 |
+| `driver/status.ps1` | 读取并打印阶段名称、IID 来源、未验证候选数与异步失败点；Stage=5 提示接口不匹配，Stage=11 提示失败关闭并指向兼容性矩阵 |
 | `app/assets/locales.tsv` | 由 4 列（es/en/fr/de）扩为 5 列（新增 zh），287 条全部翻译，补 2 条动态拼接文案 → 289 行 |
 | `app/I18n.cs` | 语言选项新增 `zh / 简体中文` 且置于首位；`Saved` 默认与回退值由 `es` 改为 `zh`；目录解析 4→5 列；列映射显式处理 `de` 并把 `zh` 映射到第 5 列；`VerifyCatalog` 校验 5 列 |
 | `app/MainWindow.cs` | 删除配置文件确认框的尾部 `"»?"` 改为 `I18n.T("»?")`，使西语书名号/问号可被正确翻译；标题栏 **×** 改绑 `MinimizeToTray()`，新增 `Closing` 拦截系统关闭、`ForceClose()` 与 `closeButton` 字段，`VerifyDraftBehavior` 增加关闭按钮 / 系统关闭 / 托盘恢复断言 |
 | `app/Setup.cs` | `/languages-test` 结果文案由 "four languages" 改为 "five languages" |
 | `app/App.cs` | 13 处自动化测试的自退出由 `window.Close()` 改为 `window.ForceClose()`，避免测试窗口被 `Closing` 拦截后无法退出 |
-| `driver/build.ps1` | `vcvars64.bat` 导入包在 `if ($env:STADIALINK_VC_ENV_READY -ne '1')` 内，允许调用方自备 `INCLUDE`/`LIB`/`PATH`；默认行为不变 |
+| `driver/build.ps1` | `vcvars64.bat` 导入包在 `if ($env:STADIALINK_VC_ENV_READY -ne '1')` 内，允许调用方自备 `INCLUDE`/`LIB`/`PATH`；新增测试构建开关 `STADIALINK_ALLOW_UNVERIFIED_IID`（默认关闭） |
 | `app/build-native.ps1` | 同上 |
 | `tests/run.ps1` | 同上 |
 | `app/package.ps1` | 两处暂存目录清理受 `STADIALINK_SKIP_STAGE_CLEANUP=1` 控制；默认行为不变 |
@@ -35,7 +35,7 @@ git apply patches/v1.0.2-hotfix.patch
 | 文件 | 用途 |
 | --- | --- |
 | `tests/build-zh-locale.py` | 幂等生成 5 列翻译表（先移除已存在的 zh 列再重建），是 `locales.tsv` 的可复现来源 |
-| `tests/probe-private-gatt.py` | 只读探测本机私有 WinRT 激活工厂与接口 IID，供换 Windows 版本后诊断；不会连接手柄、不会写 GATT 特征 |
+| `tests/probe-private-gatt.py` | 只读探测本机私有 WinRT 激活工厂与接口 IID，输出标准 8-4-4-4-12 GUID 并区分已验证 IID / 共享 statics / 未验证候选；不会连接手柄、不会写 GATT 特征 |
 
 此外 `app/StadiaLink.ico` 是 `app/create-icon.ps1` 生成、被 `app/build.ps1` 引用的构建资源，随本仓库提供（新 `.gitignore` 不再忽略 `*.ico`）。它是二进制资源，**不放入文本补丁**。
 
@@ -47,10 +47,12 @@ git apply patches/v1.0.2-hotfix.patch
 - 默认 `README.md` 改为简体中文（与 `README.zh-CN.md` 一致）；原西班牙语版另存为 `README.es.md`；6 份 README 的语言导航同步更新；仓库 About 简介改为简体中文
 - `CHANGELOG.md` 新增 `Unreleased — 1.0.2 hotfix (2026-11-09)` 条目（含关闭按钮修复），历史条目不变；`RELEASE_NOTES.md` 增加「关闭按钮行为」小节并更新产物哈希
 - 新增 `RELEASE_NOTES.md`（中文版本说明）、本文件、`patches/`、`dist/`
+- 新增 `docs/COMPATIBILITY.md`：兼容性矩阵（含 Windows 10 未验证说明）、失败关闭策略、诊断字节表与新增 IID 的实机 ABI 验证流程；6 语 README 的兼容性段落与 `cd StadiaLink-Win11-Fix` 构建命令同步更新
+- `CHANGELOG.md` 追加「代码审查后加固」条目；`RELEASE_NOTES.md` 追加第 9 节并修订「已知限制」第 1 条
 
 ## 四、未改动的部分
 
-USB 震动路径、蓝牙输入与 XInput 翻译、配置模型与持久化、电池读取、托盘图标与电量显示、开机自启、更新检查、驱动签名与安装流程、INF 的设备匹配 ID、报告长度与既有字段布局。仅「关闭 / 恢复」的窗口行为按第一节调整。所有新增构建开关默认关闭，原有 `.\app\package.ps1 -Driver` 用法不变。
+USB 震动路径、蓝牙输入与 XInput 翻译、配置模型与持久化、电池读取、托盘图标与电量显示、开机自启、更新检查、驱动签名与安装流程、INF 的设备匹配 ID、报告长度与既有字段布局（新增诊断仅使用原本空闲的第 62、63 字节）。仅「关闭 / 恢复」的窗口行为按第一节调整。所有新增构建开关默认关闭，原有 `.\app\package.ps1 -Driver` 用法不变。
 
 ## 五、明确排除的内容
 
@@ -68,4 +70,21 @@ USB 震动路径、蓝牙输入与 XInput 翻译、配置模型与持久化、�
 | `release/SHA256.txt`、`release/SHA256SUMS.txt` | 由 `dist/` 下重新生成的两份清单替代（只覆盖实际分发的文件） |
 | `driver/out/` 中间产物、`*.obj`、`*.pdb`、`*.log`、截图、DriverStore 备份 | 构建中间物与本机回滚材料 |
 
-`dist/driver/` 中的 `winstadia.dll` / `winstadia.inf` 是**唯一**保留的 `driver/out/pkg` 产物（精简 WDK 后重新编译，代码与双 IID 未变；`DriverVer=11/09/2026,22.52.7.585`）。
+`dist/driver/` 中的 `winstadia.dll` / `winstadia.inf` 是**唯一**保留的 `driver/out/pkg` 产物（2026-11-10 重新编译，含审查加固，双 IID 未变；`DriverVer=11/10/2026,18.46.2.678`）。
+
+## 六、代码审查后的加固（2026-11-10）
+
+| 文件 | 追加的改动 |
+| --- | --- |
+| `driver/private-gatt.cpp` | `STADIALINK_ALLOW_UNVERIFIED_IID`（默认 0）；`DiscoverDeviceIid()` 改为枚举全部候选 + 计数 + 失败关闭；已知 IID 循环区分 `E_NOINTERFACE`；`Await()` 拆出 5 个异步子阶段并修正 `get_Status` 失败被误判为超时；注释改为 `Windows 26200 (verified)` |
+| `driver/private-gatt.h` | Stage 11、`STADIA_GATT_ASYNC_*`、`CandidateCount`、`AsyncStage` |
+| `driver/winstadia.c` | 第 62、63 字节输出候选数与异步失败点 |
+| `driver/status.ps1` | 阶段 11 / 异步子阶段 / 候选数的可读输出与排障指引 |
+| `driver/build.ps1` | 测试构建专用编译开关，默认关闭 |
+| `tests/probe-private-gatt.py` | 标准 GUID 输出、IID 分类标注、增加 22631 已验证 IID 探测项、末尾说明不误导 |
+| 6 语 README + 模板 | 重写中文「蓝牙震动兼容性」章节以匹配失败关闭行为；统一 6 语兼容性边界；修正构建目录名 |
+| `docs/COMPATIBILITY.md`（新增，文档类，不进补丁） | 兼容性矩阵、失败关闭说明、诊断字节表、新增 IID 实机验证流程、提交拆分约定 |
+
+**未验证版本**：Windows 10 22H2 / 11 22H2 / 11 24H2 均无实机数据，不进入 `DeviceIids[]`。本次没有 Windows 10 的 IID 可补，下一步应先做只读探测，而不是猜一个 IID 写进白名单。
+
+**行为影响**：22631 / 26200 上仍按原来两个已验证 IID 打开，震动路径完全不变；只有未知 build 从「可能猜错并调用」变为「明确停用并报告」。

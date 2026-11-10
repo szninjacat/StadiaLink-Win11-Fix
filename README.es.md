@@ -50,7 +50,7 @@ Abre Windows PowerShell en una carpeta de trabajo. Compilar no requiere permisos
 
 ```powershell
 git clone https://github.com/szninjacat/StadiaLink-Win11-Fix.git
-cd StadiaLink
+cd StadiaLink-Win11-Fix
 
 # Si los scripts están bloqueados, solo para esta sesión.
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
@@ -127,7 +127,7 @@ Solicita permisos de administrador, elimina los paquetes de este controlador y d
 
 ## 🤝 Compatibilidad, créditos y licencia
 
-El transporte de vibración Bluetooth utiliza interfaces privadas de Windows, comprobadas en Windows 11 build 26200; pueden cambiar con las actualizaciones del sistema.
+El transporte de vibración Bluetooth utiliza interfaces privadas de Windows, verificadas en equipos reales solo en Windows 11 builds **26200** y **22631**. En otras versiones -incluido Windows 10- solo se garantiza la instalabilidad del framework UMDF 2.31; la interfaz GATT privada no está verificada y no se garantiza su funcionamiento. Consulta la matriz y el procedimiento de validación en [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md). Las actualizaciones del sistema también pueden cambiar estas interfaces.
 
 GPL-3.0. El controlador parte de [aisk/WinStadia](https://github.com/aisk/WinStadia). Consulta [LICENSE](LICENSE) y [UPSTREAM-README.md](UPSTREAM-README.md). Proyecto independiente de Google y Microsoft.
 

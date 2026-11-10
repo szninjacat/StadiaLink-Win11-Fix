@@ -18,10 +18,23 @@ enum {
     STADIA_GATT_STAGE_DISCOVERY       = 8,  // characteristic discovery object
     STADIA_GATT_STAGE_CHARACTERISTICS = 9,  // enumerate characteristics
     STADIA_GATT_STAGE_REPORT_REF      = 10, // read Report Reference descriptor
-    STADIA_GATT_STAGE_READY           = 0x7F
+    STADIA_GATT_STAGE_IID_UNVERIFIED = 11, // no verified IID for this build; fail closed
+    STADIA_GATT_STAGE_READY          = 0x7F
 };
 
-// IidIndex: 1..N = a known per-build IID, >=0x80 = discovered at runtime,
+// AsyncStage is reported separately from Stage: Await() is used at several
+// points in the open path, so a distinct field keeps the main stage intact.
+enum {
+    STADIA_GATT_ASYNC_NONE    = 0,
+    STADIA_GATT_ASYNC_INFO_QI = 1, // QueryInterface(IAsyncInfo)
+    STADIA_GATT_ASYNC_STATUS  = 2, // get_Status
+    STADIA_GATT_ASYNC_RESULTS = 3, // GetResults (slot 8)
+    STADIA_GATT_ASYNC_ERROR   = 4, // async ErrorCode / canceled
+    STADIA_GATT_ASYNC_TIMEOUT = 5
+};
+
+// IidIndex: 1..N = a known per-build IID, >=0x80 = discovered at runtime
+// (only possible in a build with STADIALINK_ALLOW_UNVERIFIED_IID=1),
 // 0 = not resolved yet.
 typedef struct _STADIA_GATT_DIAGNOSTICS {
     HRESULT OpenStatus;
@@ -33,6 +46,8 @@ typedef struct _STADIA_GATT_DIAGNOSTICS {
     UCHAR ReportType;
     ULONG Stage;
     ULONG IidIndex;
+    ULONG CandidateCount; // unverified 0x5xxx IIDs seen on this build
+    ULONG AsyncStage;     // last Await() failure point, see STADIA_GATT_ASYNC_*
 } STADIA_GATT_DIAGNOSTICS;
 
 HRESULT StadiaPrivateGattOpen(UINT64 Address, void **Session, STADIA_GATT_DIAGNOSTICS *Diagnostics);

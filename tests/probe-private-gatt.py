@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """Probe the private WinRT GATT activation factory on the running Windows build.
 
-StadiaLink's driver/private-gatt.cpp hard-codes interface IIDs recovered from
-Windows build 26200. This tool asks the real activation factory which interfaces
-it actually implements on this machine, so the driver can be made
-version-adaptive instead of guessing the private ABI.
+StadiaLink's driver/private-gatt.cpp pins two ABI-verified device interface
+IIDs (Windows 26200 and 22631) and fails closed on any other build. This tool
+asks the real activation factory which interfaces it implements on this
+machine, so a new build can be investigated without guessing the private ABI.
 
 Read-only: it activates the factory and calls IInspectable::GetIids only.
 It never connects to a controller and never writes a GATT characteristic.
+The driver no longer auto-uses a discovered IID: a 0x5xxx Data3 value is only
+a candidate, never proof that vtable slots 11/14 still mean the same thing.
+See docs/COMPATIBILITY.md for the validation procedure.
 With --deep it also inspects the factory vtable; it stops before calling into
 a private interface when this process only received combase's generic
 activation-factory proxy (the real facet is available inside the UMDF host).
@@ -38,9 +41,15 @@ IID_INSPECTABLE = "af86e2e0-b12d-4c6a-9c5a-d7aa65101e90"
 IID_ACTIVATION_FACTORY = "00000035-0000-0000-c000-000000000046"
 IID_ASYNCINFO = "00000036-0000-0000-c000-000000000046"
 
-# Values hard-coded in driver/private-gatt.cpp, recovered from build 26200.
+# Values hard-coded in driver/private-gatt.cpp, verified on real machines.
 IID_STATICS_26200 = "cbaa1a5f-dcef-508b-acc6-158f1e160c0f"
 IID_DEVICE_26200 = "6bbede1f-797f-5c17-8ac7-3f342037cb59"
+IID_DEVICE_22631 = "0799a6a6-e942-5218-8a0e-7c9b996e4158"
+
+VERIFIED_DEVICE_IIDS = {
+    IID_DEVICE_26200: "VERIFIED device IID (Windows 26200)",
+    IID_DEVICE_22631: "VERIFIED device IID (Windows 22631 / 23H2)",
+}
 
 STD_IIDS = {
     IID_INSPECTABLE: "IInspectable",
@@ -66,9 +75,11 @@ def make_guid(text):
 
 
 def guid_str(g):
-    return "%08X-%04X-%04X-%s" % (
-        g.Data1, g.Data2, g.Data3, "".join("%02X" % x for x in g.Data4)
-    )
+    # Canonical 8-4-4-4-12 form. The old output omitted the dash inside Data4,
+    # so standard IIDs never matched STD_IIDS and every 0x5xxx IID looked like
+    # an unverified candidate - including the shared statics IID.
+    d4 = "".join("%02X" % x for x in g.Data4)
+    return "%08X-%04X-%04X-%s-%s" % (g.Data1, g.Data2, g.Data3, d4[:4], d4[4:])
 
 
 def hr_text(value):
@@ -184,13 +195,28 @@ def module_of(address):
     return os.path.basename(name.value)
 
 
+def iid_note(text):
+    """Explain an IID without ever implying a candidate is the device facet."""
+    low = text.lower()
+    notes = []
+    standard = STD_IIDS.get(low)
+    if standard:
+        notes.append(standard)
+    if low in VERIFIED_DEVICE_IIDS:
+        notes.append(VERIFIED_DEVICE_IIDS[low])
+    elif low == IID_STATICS_26200:
+        notes.append("shared statics IID")
+    elif (uuid.UUID(text).fields[2] & 0xF000) == 0x5000:
+        notes.append("0x5xxx parameterized IID (candidate, NOT verified)")
+    return " <- " + "; ".join(notes) if notes else ""
+
+
 def dump_iids(obj, label):
     hr, iids = get_iids(obj)
     print("      %s GetIids : %s, %d interface(s)" % (label, hr_text(hr), len(iids)))
     for index, g in enumerate(iids):
         text = guid_str(g)
-        note = STD_IIDS.get(text.lower(), "")
-        print("        [%d] %s %s" % (index, text, ("<- " + note) if note else ""))
+        print("        [%d] %s%s" % (index, text, iid_note(text)))
     return hr == 0
 
 
@@ -299,10 +325,11 @@ def main():
         return 1
 
     probes = [
-        ("statics IID hard-coded for build 26200", IID_STATICS_26200),
+        ("shared statics IID (26200 / 22631)", IID_STATICS_26200),
         ("IActivationFactory (standard)", IID_ACTIVATION_FACTORY),
         ("IInspectable (standard)", IID_INSPECTABLE),
-        ("device IID hard-coded for build 26200", IID_DEVICE_26200),
+        ("VERIFIED device IID (Windows 26200)", IID_DEVICE_26200),
+        ("VERIFIED device IID (Windows 22631 / 23H2)", IID_DEVICE_22631),
     ]
 
     for label, value in probes:
@@ -318,15 +345,22 @@ def main():
             print("    GetIids        : %s, %d interface(s)" % (hr_text(hr2), len(iids)))
             for index, g in enumerate(iids):
                 text = guid_str(g)
-                note = STD_IIDS.get(text.lower(), "")
+                note = iid_note(text)
                 if text.lower() == value.lower():
-                    note = (note + " (requested)").strip()
-                print("      [%d] %s %s" % (index, text, ("<- " + note) if note else ""))
+                    note += " (requested)"
+                print("      [%d] %s %s" % (index, text, note))
             RELEASE(vtable_slot(factory, 2))(factory)
 
     ro.WindowsDeleteString(hs)
     print()
-    print("Compare the IIDs above with the two hard-coded values in driver/private-gatt.cpp.")
+    print("Only the VERIFIED device IIDs above are used automatically by the driver.")
+    print("Device IIDs belong to the object returned by CreateAsync, not to the")
+    print("activation factory, so E_NOINTERFACE for them above is expected.")
+    print("A 0x5xxx parameterized IID is a candidate, NOT proof of the")
+    print("GattClientDevice device facet: vtable slots 11/14 must be validated on")
+    print("a real machine. On an unknown build the driver counts candidates")
+    print("(status report byte 62), reports stage 11 and fails closed.")
+    print("See docs/COMPATIBILITY.md before adding an IID to DeviceIids[].")
     return 0
 
 

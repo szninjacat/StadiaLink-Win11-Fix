@@ -7,8 +7,10 @@
 // 26200 IID on 22631 fails with E_NOINTERFACE (0x80004002), which is the
 // "no vibration over Bluetooth" symptom. The statics IID above it is shared
 // by both builds, so only the device facet has to be selected per build.
-// Known IIDs are tried first; an unknown build falls back to asking the
-// created object which private interfaces it actually implements.
+// Known IIDs are tried first. For any other build the driver enumerates the
+// object's private interfaces, reports them for diagnosis, and fails closed:
+// a matching IID does not prove that vtable slots 11/14 still mean what they
+// used to. See docs/COMPATIBILITY.md for the ABI validation procedure.
 #define WIN32_LEAN_AND_MEAN
 #include "private-gatt.h"
 #include <roapi.h>
@@ -22,6 +24,13 @@
 #include <wrl/wrappers/corewrappers.h>
 #include <new>
 #include <memory>
+
+// Safety switch. Unverified IIDs are never used in a normal build. Define this
+// to 1 only for a throwaway test build on a new Windows version, after reading
+// docs/COMPATIBILITY.md; even then a single unambiguous candidate is required.
+#ifndef STADIALINK_ALLOW_UNVERIFIED_IID
+#define STADIALINK_ALLOW_UNVERIFIED_IID 0
+#endif
 
 using Microsoft::WRL::ComPtr;
 using Microsoft::WRL::Wrappers::HStringReference;
@@ -52,17 +61,27 @@ struct Session {
     GUID CharacteristicIID={};
     STADIA_GATT_DIAGNOSTICS Diagnostics={};
 };
-static HRESULT Await(IInspectable* operation,IInspectable** result) {
+static HRESULT Await(IInspectable* operation,IInspectable** result,ULONG* asyncStage=nullptr) {
     *result=nullptr;if(!operation) return E_UNEXPECTED;
+    if(asyncStage) *asyncStage=STADIA_GATT_ASYNC_NONE;
     ComPtr<ABI::Windows::Foundation::IAsyncInfo> info;
     HRESULT hr=operation->QueryInterface(IID_PPV_ARGS(&info));
-    if(FAILED(hr)) return hr;
+    if(FAILED(hr)) {if(asyncStage) *asyncStage=STADIA_GATT_ASYNC_INFO_QI;return hr;}
     AsyncStatus status=Started;DWORD start=GetTickCount();
     while(SUCCEEDED(hr=info->get_Status(&status)) && status==Started && GetTickCount()-start<2000) Sleep(2);
-    if(SUCCEEDED(hr) && status==Completed)
+    if(FAILED(hr)) {if(asyncStage) *asyncStage=STADIA_GATT_ASYNC_STATUS;}
+    else if(status==Started) {info->Cancel();hr=HRESULT_FROM_WIN32(ERROR_TIMEOUT);if(asyncStage) *asyncStage=STADIA_GATT_ASYNC_TIMEOUT;}
+    else if(status==Completed) {
         hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,IInspectable**)>(operation,8)(operation,result);
-    else if(status==Started) {info->Cancel();hr=HRESULT_FROM_WIN32(ERROR_TIMEOUT);}
-    else if(SUCCEEDED(hr)) {info->get_ErrorCode(&hr);if(SUCCEEDED(hr)) hr=E_FAIL;}
+        if(FAILED(hr) && asyncStage) *asyncStage=STADIA_GATT_ASYNC_RESULTS;
+    }
+    else {
+        // get_Status failures, cancellations and async errors used to be
+        // collapsed into ERROR_TIMEOUT. Report them distinctly.
+        HRESULT error=E_FAIL;info->get_ErrorCode(&error);
+        hr=FAILED(error)?error:E_FAIL;
+        if(asyncStage) *asyncStage=STADIA_GATT_ASYNC_ERROR;
+    }
     info->Close();return hr;
 }
 static HRESULT CheckCommunication(IInspectable* result) {
@@ -88,8 +107,8 @@ static HRESULT ResultVector(IInspectable* result,IInspectable** vector,UINT32* c
 // Each IID was read from the inbox HidOverGatt.dll of its build, where it sits
 // next to the statics IID that both builds share.
 static const GUID DeviceIids[] = {
-    {0x6bbede1f,0x797f,0x5c17,{0x8a,0xc7,0x3f,0x34,0x20,0x37,0xcb,0x59}}, // Windows 26200+
-    {0x0799a6a6,0xe942,0x5218,{0x8a,0x0e,0x7c,0x9b,0x99,0x6e,0x41,0x58}}, // Windows 22631 (23H2)
+    {0x6bbede1f,0x797f,0x5c17,{0x8a,0xc7,0x3f,0x34,0x20,0x37,0xcb,0x59}}, // Windows 26200 (verified)
+    {0x0799a6a6,0xe942,0x5218,{0x8a,0x0e,0x7c,0x9b,0x99,0x6e,0x41,0x58}}, // Windows 22631 (verified)
 };
 #define DEVICE_IID_COUNT (sizeof(DeviceIids)/sizeof(DeviceIids[0]))
 
@@ -101,11 +120,19 @@ static HRESULT QueryDeviceFacet(IInspectable* created,const GUID& iid,IInspectab
     return S_OK;
 }
 
-// Last resort for an unrecognised Windows build: IInspectable::GetIids (slot 3)
-// lists the private interfaces the created object really implements. WinRT
+// For an unrecognised Windows build: IInspectable::GetIids (slot 3) lists the
+// private interfaces the created object really implements. WinRT
 // parameterized interfaces carry 0x5xxx in Data3, which separates them from
 // IUnknown / IInspectable / IAgileObject / IStringable plumbing.
-static HRESULT DiscoverDeviceIid(IInspectable* created,GUID* selected,ULONG* index) {
+//
+// That bit pattern is NOT proof of identity. If a future build exposes more
+// than one such interface, picking the first one and calling vtable slots
+// 11/14 on it can crash the UMDF host. Normal builds therefore only count the
+// candidates and fail closed. STADIALINK_ALLOW_UNVERIFIED_IID=1 re-enables
+// auto-selection for a throwaway test build, and only with one candidate.
+static HRESULT DiscoverDeviceIid(IInspectable* created,GUID* selected,ULONG* index,
+                                 ULONG* candidateCount) {
+    *candidateCount=0;
     ULONG count=0;GUID* iids=nullptr;
     HRESULT hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,ULONG*,GUID**)>(created,3)
         (created,&count,&iids);
@@ -114,7 +141,7 @@ static HRESULT DiscoverDeviceIid(IInspectable* created,GUID* selected,ULONG* ind
         if(iids) CoTaskMemFree(iids);
         return E_UNEXPECTED;
     }
-    hr=E_NOINTERFACE;
+    GUID first={};ULONG firstIndex=0;ULONG candidates=0;
     for(ULONG i=0;i<count;i++) {
         const GUID& candidate=iids[i];
         if((candidate.Data3 & 0xF000)!=0x5000) continue;
@@ -123,10 +150,18 @@ static HRESULT DiscoverDeviceIid(IInspectable* created,GUID* selected,ULONG* ind
             if(IsEqualGUID(candidate,DeviceIids[k])) {known=true;break;}
         }
         if(known) continue;
-        *selected=candidate;*index=0x80+i;hr=S_OK;break;
+        if(candidates==0) {first=candidate;firstIndex=i;}
+        candidates++;
     }
     CoTaskMemFree(iids);
-    return hr;
+    *candidateCount=candidates;
+#if STADIALINK_ALLOW_UNVERIFIED_IID
+    if(candidates==1) {*selected=first;*index=0x80+firstIndex;return S_OK;}
+    return E_NOINTERFACE;
+#else
+    (void)selected;(void)index;(void)first;(void)firstIndex;
+    return HRESULT_FROM_WIN32(ERROR_NOT_SUPPORTED);
+#endif
 }
 
 static HRESULT GetDevice(UINT64 address,IInspectable** device,Session& session) {
@@ -142,30 +177,39 @@ static HRESULT GetDevice(UINT64 address,IInspectable** device,Session& session) 
     hr=factory->CreateAsync(remote,0,nullptr,nullptr,0,&operation);if(FAILED(hr)) return hr;
 
     session.Diagnostics.Stage=STADIA_GATT_STAGE_AWAIT_CREATE;
-    ComPtr<IInspectable> created;hr=Await(operation.Get(),&created);if(FAILED(hr)) return hr;
+    ComPtr<IInspectable> created;
+    hr=Await(operation.Get(),&created,&session.Diagnostics.AsyncStage);
+    if(FAILED(hr)) return hr;
     if(!created) return E_UNEXPECTED;
 
     session.Diagnostics.Stage=STADIA_GATT_STAGE_DEVICE_QUERY;
     for(size_t i=0;i<DEVICE_IID_COUNT;i++) {
         hr=QueryDeviceFacet(created.Get(),DeviceIids[i],device);
         if(SUCCEEDED(hr)) {session.Diagnostics.IidIndex=(ULONG)(i+1);return S_OK;}
+        // E_NOINTERFACE is the expected "this IID belongs to another build"
+        // result. Any other failure must not be masked by the next IID.
+        if(hr!=E_NOINTERFACE) return hr;
     }
-    // Neither known build matched. Let the object describe itself instead of
-    // hard-failing forever on a future Windows update.
+    // No verified IID matched. Enumerate candidates for diagnosis, but do not
+    // call an unverified vtable from inside the UMDF host (see docs/COMPATIBILITY.md).
     GUID discovered;ULONG index=0;
-    hr=DiscoverDeviceIid(created.Get(),&discovered,&index);
-    if(FAILED(hr)) return hr;
+    hr=DiscoverDeviceIid(created.Get(),&discovered,&index,
+                         &session.Diagnostics.CandidateCount);
+    if(FAILED(hr)) {
+        session.Diagnostics.Stage=STADIA_GATT_STAGE_IID_UNVERIFIED;
+        return hr;
+    }
     hr=QueryDeviceFacet(created.Get(),discovered,device);
     if(SUCCEEDED(hr)) session.Diagnostics.IidIndex=index;
     return hr;
 }
-static HRESULT ReadReportReference(IInspectable* discovery,IInspectable* characteristic,const CharacteristicInfo& info,UCHAR* id,UCHAR* type) {
+static HRESULT ReadReportReference(IInspectable* discovery,IInspectable* characteristic,const CharacteristicInfo& info,UCHAR* id,UCHAR* type,ULONG* asyncStage) {
     GUID reference=BluetoothUuid(0x2908);
     ComPtr<IInspectable> operation;
     HRESULT hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,const CharacteristicInfo*,const GUID*,UINT32,IInspectable**)>(discovery,11)
         (discovery,&info,&reference,0,&operation);
     if(FAILED(hr)) return hr;
-    ComPtr<IInspectable> result;hr=Await(operation.Get(),&result);if(FAILED(hr)) return hr;
+    ComPtr<IInspectable> result;hr=Await(operation.Get(),&result,asyncStage);if(FAILED(hr)) return hr;
     ComPtr<IInspectable> vector;UINT32 count=0;hr=ResultVector(result.Get(),&vector,&count);if(FAILED(hr)) return hr;
     if(count!=1) return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
     // Descriptor info is kept opaque; the exact value returned by discovery is
@@ -177,7 +221,7 @@ static HRESULT ReadReportReference(IInspectable* discovery,IInspectable* charact
     hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,const void*,UINT32,UINT32,IInspectable**)>(characteristic,9)
         (characteristic,descriptor,0,0,&operation);
     if(FAILED(hr)) return hr;
-    result.Reset();hr=Await(operation.Get(),&result);if(FAILED(hr)) return hr;
+    result.Reset();hr=Await(operation.Get(),&result,asyncStage);if(FAILED(hr)) return hr;
     hr=CheckCommunication(result.Get());if(FAILED(hr)) return hr;
     ComPtr<IBuffer> buffer;
     hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,IBuffer**)>(result.Get(),8)(result.Get(),&buffer);
@@ -195,7 +239,7 @@ static HRESULT Open(UINT64 address,Session& session) {
     GUID hid=BluetoothUuid(0x1812);ComPtr<IInspectable> operation;
     hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,const GUID*,UINT32,IInspectable**)>(device.Get(),11)(device.Get(),&hid,0,&operation);
     if(FAILED(hr)) return hr;
-    ComPtr<IInspectable> result;hr=Await(operation.Get(),&result);if(FAILED(hr)) return hr;
+    ComPtr<IInspectable> result;hr=Await(operation.Get(),&result,&session.Diagnostics.AsyncStage);if(FAILED(hr)) return hr;
     ComPtr<IInspectable> vector;UINT32 count=0;hr=ResultVector(result.Get(),&vector,&count);if(FAILED(hr)) return hr;
     if(count!=1) return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
     ServiceInfo serviceInfo={};
@@ -213,7 +257,7 @@ static HRESULT Open(UINT64 address,Session& session) {
     if(FAILED(hr) || !discovery) return FAILED(hr)?hr:E_UNEXPECTED;
     operation.Reset();hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,UINT32,IInspectable**)>(discovery.Get(),8)(discovery.Get(),0,&operation);
     if(FAILED(hr)) return hr;
-    result.Reset();hr=Await(operation.Get(),&result);if(FAILED(hr)) return hr;
+    result.Reset();hr=Await(operation.Get(),&result,&session.Diagnostics.AsyncStage);if(FAILED(hr)) return hr;
     vector.Reset();hr=ResultVector(result.Get(),&vector,&count);if(FAILED(hr)) return hr;
     session.Diagnostics.Stage=STADIA_GATT_STAGE_CHARACTERISTICS;
     GUID reportUuid=BluetoothUuid(0x2a4d);
@@ -226,7 +270,7 @@ static HRESULT Open(UINT64 address,Session& session) {
         hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,const CharacteristicInfo*,IInspectable**)>(service.Get(),12)(service.Get(),&info,&characteristic);
         if(FAILED(hr) || !characteristic) return FAILED(hr)?hr:E_UNEXPECTED;
         session.Diagnostics.Stage=STADIA_GATT_STAGE_REPORT_REF;
-        UCHAR id=0,type=0;hr=ReadReportReference(discovery.Get(),characteristic.Get(),info,&id,&type);
+        UCHAR id=0,type=0;hr=ReadReportReference(discovery.Get(),characteristic.Get(),info,&id,&type,&session.Diagnostics.AsyncStage);
         if(FAILED(hr)) return hr;
         if(id!=5 || type!=2) continue;
         hr=RoGetAgileReference(AGILEREFERENCE_DEFAULT,__uuidof(IInspectable),device.Get(),&session.Device);if(FAILED(hr)) return hr;
@@ -267,7 +311,7 @@ static HRESULT Write(Session& session,const UCHAR* report,size_t length) {
     hr=Slot<HRESULT (STDMETHODCALLTYPE *)(IInspectable*,UINT32,UINT32,IBuffer*,IInspectable**)>(characteristic.Get(),8)
         (characteristic.Get(),1,0,buffer.Get(),&operation);
     if(FAILED(hr)) return hr;
-    ComPtr<IInspectable> result;hr=Await(operation.Get(),&result);if(FAILED(hr)) return hr;
+    ComPtr<IInspectable> result;hr=Await(operation.Get(),&result,&session.Diagnostics.AsyncStage);if(FAILED(hr)) return hr;
     return CheckCommunication(result.Get());
 }
 extern "C" HRESULT StadiaPrivateGattWrite(void* opaque,const UCHAR* report,size_t length,STADIA_GATT_DIAGNOSTICS* diagnostics) {
