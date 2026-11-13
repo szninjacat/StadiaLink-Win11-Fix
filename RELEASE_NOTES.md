@@ -4,6 +4,7 @@
 - **Version**: `1.0.0` (assembly, file and manifest versions `1.0.0.0`; release tag `v1.0.0`)
 - **Platform**: Windows 11 x64, .NET Framework 4.8, UMDF 2.31
 - **License**: GPL-3.0, see [LICENSE](LICENSE); third-party attribution in [CREDITS.md](CREDITS.md)
+- **Provenance**: independent derivative of [minysito/StadiaLink](https://github.com/minysito/StadiaLink) (GPL-3.0); own 1.0 version line and an update channel restricted to this repository. See [CREDITS.md](CREDITS.md).
 - **Documentation**: [README.md](README.md) (English, default), [README.zh-CN.md](README.zh-CN.md), [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md), [docs/CHANGES.md](docs/CHANGES.md)
 
 StadiaLink Rev is an independent configuration tool for the Google Stadia controller on Windows. Version 1.0.0 is the first release on this project's own version line. It solves three practical problems — Bluetooth rumble failing on Windows 11 23H2, a UI that did not offer Simplified Chinese, and a close button that exited the app instead of leaving it in the tray — and adds a compatibility-first strategy for Windows builds that have not been verified yet.
@@ -73,10 +74,10 @@ The update notification marker is `StadiaLinkRev.UpdateNotified`, isolated from 
 
 | File | Size (B) | SHA-256 (first 16) | Description |
 | --- | --- | --- | --- |
-| `StadiaLink.Setup.exe` | 604,672 | `d020a150ac3b3c75` | Full installer: application, driver, native library and embedded source |
-| `StadiaLink.exe` | 252,928 | `0e8fde4ab845961e` | WPF application x64 (version resource 1.0.0.0) |
-| `StadiaLink.Update.exe` | 522,752 | `b01ce3f4269fb7c0` | Application-only updater |
-| `StadiaDevice.dll` | 165,376 | `4cb0008c4ef89d15` | Native battery reader |
+| `StadiaLink.Setup.exe` | 607,744 | `d8b683a684f875d6` | Full installer: application, driver, native library and embedded source |
+| `StadiaLink.exe` | 252,928 | `0f91d6e51dee416f` | WPF application x64 (version resource 1.0.0.0) |
+| `StadiaLink.Update.exe` | 525,824 | `7cb81a91224a35ed` | Application-only updater |
+| `StadiaDevice.dll` | 165,376 | `b0fa5952814f4adc` | Native battery reader |
 | `driver/winstadia.dll` | 152,064 | `06b70008929b2cb7` | UMDF driver (verified IIDs, diagnostics, layered adaptation) |
 | `driver/winstadia.inf` | 3,970 | `fc0a1d07216dbd48` | Driver INF (fixed VID_18D1&PID_9400 match) |
 

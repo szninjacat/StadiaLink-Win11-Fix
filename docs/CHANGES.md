@@ -1,5 +1,9 @@
 # Implementation notes
 
+## Project provenance
+
+StadiaLink Rev is an independent derivative of [minysito/StadiaLink](https://github.com/minysito/StadiaLink) (GPL-3.0); the native driver derives from [aisk/WinStadia](https://github.com/aisk/WinStadia). The application, installer, translations, documentation and build scripts originate from the former, with StadiaLink Rev's modifications. The version line restarts at 1.0.0, is not aligned to the original project's numbering, and update checks only read stable releases of this repository. Copyright notices and the GPL-3.0 license are retained. See [CREDITS.md](../CREDITS.md) and [LICENSE](../LICENSE).
+
 This document describes what is in the repository and why. The source trees under `app/`, `driver/` and `tests/` are the complete, buildable codebase — no external patch has to be applied.
 
 ## 1. Driver (`driver/`)

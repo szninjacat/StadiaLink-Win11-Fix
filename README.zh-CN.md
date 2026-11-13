@@ -11,6 +11,8 @@
 > **StadiaLink Rev 1.0.0**：独立的 Stadia 手柄配置工具，修复 Windows 11 23H2 蓝牙震动失效，界面默认简体中文，窗口「×」与 Alt+F4 最小化到系统托盘，并对未验证的 Windows 版本自动校验私有 GATT 接口。完整说明见 [RELEASE_NOTES.md](RELEASE_NOTES.md)、[CHANGELOG.md](CHANGELOG.md) 与 [docs/CHANGES.md](docs/CHANGES.md)；编译产物在 [dist/](dist/)。
 >
 > **独立版本线**：`1.0.0` 是本项目的首个版本，只从本仓库的正式 Release 检查更新，不受任何外部项目版本影响。
+>
+> **项目来源** — StadiaLink Rev 是 [minysito/StadiaLink](https://github.com/minysito/StadiaLink)（GPL-3.0）的衍生独立版本：版本线从 `1.0.0` 重新起算，更新检查只读取本仓库的正式 Release，不会查询原项目。完整归属见 [CREDITS.md](CREDITS.md)。
 
 ---
 
@@ -161,9 +163,11 @@ python .\tests\probe-private-gatt.py     # 只读枚举本机私有接口 IID
 
 蓝牙震动依赖私有 Windows 接口，**仅在 Windows 11 Build 26200 与 22631 完成实机验证**。其他版本（含 Windows 10）只具备 UMDF 2.31 框架层面的可安装性；程序会尝试自动适配设备接口 IID，但未实机验证、不承诺成功，详见 [兼容性矩阵](docs/COMPATIBILITY.md)；系统更新也可能改变这些接口。耳机孔音频仅通过 USB 工作；不提供蓝牙音频、内置麦克风激活与 Wi-Fi 激活。仅支持 **x64**、UMDF 2.31（Win10 1809+ / Win11）与 .NET Framework 4.8。驱动为自签名，未做微软签名，新机器需重建证书信任。
 
-**已并入的第三方代码：[aisk/WinStadia](https://github.com/aisk/WinStadia)**。它是本仓库原生驱动的基础，包含 StadiaLink 的修改：UMDF 结构、Stadia 到 XInput 的输入翻译、`driver/` 中的 USB/蓝牙传输，以及派生脚本与 INF。
+**项目来源：[minysito/StadiaLink](https://github.com/minysito/StadiaLink)。** StadiaLink Rev 是该 GPL-3.0 项目的衍生独立版本：应用程序、安装程序、翻译、文档与构建脚本均源自该项目，并包含本项目的修改。「独立」指发布与维护方式：版本线从 `1.0.0` 重新起算，不与原项目的版本号比较或对齐；更新检查只读取本仓库的正式 Release，原项目的版本与 Release 不会触发更新提示；仓库单独维护，不共享原项目的议题、发布资产与路线图，也不会自动接收上游更新。原作者版权声明与 GPL-3.0 许可证均予保留，见 [LICENSE](LICENSE) 与 [CREDITS.md](CREDITS.md)。本项目不受原作者、Google 或 Microsoft 的隶属或背书。
 
-原始项目：**https://github.com/aisk/WinStadia**；参考提交：[e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.com/aisk/WinStadia/commit/e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a)。保留原有版权声明。StadiaLink Rev 及其修改以 **GPL-3.0** 发布，见 [LICENSE](LICENSE) 与 [CREDITS.md](CREDITS.md)。本项目与 Google、Microsoft 无隶属关系。
+**已并入的第三方代码：[aisk/WinStadia](https://github.com/aisk/WinStadia)**。它是本仓库原生驱动的基础，包含 StadiaLink Rev 的修改：UMDF 结构、Stadia 到 XInput 的输入翻译、`driver/` 中的 USB/蓝牙传输，以及派生脚本与 INF。
+
+驱动代码来源项目：**https://github.com/aisk/WinStadia**；参考提交：[e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.com/aisk/WinStadia/commit/e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a)。保留原有版权声明。StadiaLink Rev 及其修改以 **GPL-3.0** 发布，见 [LICENSE](LICENSE) 与 [CREDITS.md](CREDITS.md)。本项目与 Google、Microsoft 无隶属关系。
 
 ## ✨ 开发方式
 

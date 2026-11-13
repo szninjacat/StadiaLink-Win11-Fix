@@ -11,6 +11,8 @@
 > **StadiaLink Rev 1.0.0** — herramienta independiente para configurar el mando Stadia en Windows 11 x64. Restaura la vibración Bluetooth en la compilación 22631, usa chino simplificado por defecto, mantiene la aplicación en la bandeja al cerrar la ventana y valida las interfaces GATT privadas en compilaciones no verificadas. Consulta [RELEASE_NOTES.md](RELEASE_NOTES.md) y [docs/CHANGES.md](docs/CHANGES.md).
 >
 > **Línea de versiones propia** — `1.0.0` es la primera versión de este proyecto. Las actualizaciones se comprueban solo en las versiones estables de este repositorio; ningún proyecto externo puede generar avisos.
+>
+> **Origen** — StadiaLink Rev es una derivación independiente de [minysito/StadiaLink](https://github.com/minysito/StadiaLink) (GPL-3.0). Su línea de versiones empieza en 1.0.0 y la comprobación de actualizaciones nunca consulta el proyecto original. Véase [CREDITS.md](CREDITS.md).
 
 ---
 
@@ -133,11 +135,13 @@ El transporte de vibración Bluetooth utiliza interfaces privadas de Windows, ve
 
 GPL-3.0. El controlador parte de [aisk/WinStadia](https://github.com/aisk/WinStadia). Consulta [LICENSE](LICENSE) y [CREDITS.md](CREDITS.md). Proyecto independiente de Google y Microsoft.
 
-**Código de terceros incorporado: [aisk/WinStadia](https://github.com/aisk/WinStadia).** Es la base del controlador nativo incluido en este repositorio, con modificaciones de StadiaLink. La integración comprende la estructura UMDF, la traducción de entradas Stadia a XInput y los transportes USB/Bluetooth en `driver/`, además de los scripts e INF derivados.
+**Procedencia del proyecto: [minysito/StadiaLink](https://github.com/minysito/StadiaLink).** StadiaLink Rev es una derivación independiente de ese proyecto GPL-3.0: de él proceden la aplicación, el instalador, las traducciones, la documentación y los scripts de compilación, con las modificaciones propias de StadiaLink Rev. «Independiente» describe el modelo de publicación y mantenimiento: la línea de versiones empieza en 1.0.0, no se compara ni alinea con los números de versión del proyecto original; las actualizaciones solo se comprueban en las versiones estables de este repositorio, por lo que ninguna versión del proyecto original genera avisos; el repositorio se mantiene por separado y no recibe actualizaciones automáticas del proyecto original. Se conservan los avisos de copyright y la licencia GPL-3.0; véanse [LICENSE](LICENSE) y [CREDITS.md](CREDITS.md). Este proyecto no está afiliado ni respaldado por el autor original, Google o Microsoft.
 
-Repositorio original completo: **https://github.com/aisk/WinStadia**.
+**Código de terceros incorporado: [aisk/WinStadia](https://github.com/aisk/WinStadia).** Es la base del controlador nativo incluido en este repositorio, con modificaciones de StadiaLink Rev. La integración comprende la estructura UMDF, la traducción de entradas Stadia a XInput y los transportes USB/Bluetooth en `driver/`, además de los scripts e INF derivados.
 
-Referencia de origen: [commit e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.com/aisk/WinStadia/commit/e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a). Se conservan los avisos de copyright. StadiaLink y sus modificaciones se distribuyen bajo GPL-3.0.
+Proyecto de origen del controlador: **https://github.com/aisk/WinStadia**.
+
+Referencia de origen: [commit e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.com/aisk/WinStadia/commit/e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a). Se conservan los avisos de copyright. StadiaLink Rev y sus modificaciones se distribuyen bajo GPL-3.0.
 
 ## ✨ Desarrollo con ChatGPT / Codex
 

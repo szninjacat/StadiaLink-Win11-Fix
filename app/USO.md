@@ -1,5 +1,7 @@
 # StadiaLink Rev 1.0.0 — user guide
 
+StadiaLink Rev is an independent derivative of [minysito/StadiaLink](https://github.com/minysito/StadiaLink) (GPL-3.0). Its own version line starts at 1.0.0 and updates are checked only in this repository. Provenance and third-party code are recorded in [CREDITS.md](CREDITS.md) and [LICENSE](LICENSE).
+
 Select a profile, adjust the controls and click **Save and apply**. Unsaved profile changes are discarded when you switch tabs.
 
 - **Controller**: choose a button in the diagram and assign its function.

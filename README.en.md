@@ -11,6 +11,8 @@
 > **StadiaLink Rev 1.0.0** — an independent configuration tool for the Stadia controller on Windows 11 x64. It restores Bluetooth rumble on build 22631, ships a Simplified Chinese UI by default, keeps the app in the tray when the window is closed and validates private GATT interfaces on untested Windows builds. See [RELEASE_NOTES.md](RELEASE_NOTES.md) and [docs/CHANGES.md](docs/CHANGES.md).
 >
 > **Independent release line** — `1.0.0` is the first version of this project. Update checks only use stable releases from this repository; no external project can trigger an update prompt.
+>
+> **Origin** — StadiaLink Rev is an independent derivative of [minysito/StadiaLink](https://github.com/minysito/StadiaLink) (GPL-3.0). Its own version line starts at 1.0.0 and its update checks never consult the original project. See [CREDITS.md](CREDITS.md).
 
 ---
 
@@ -146,8 +148,10 @@ This requests administrator privileges, removes this driver's packages and retur
 
 Bluetooth vibration uses private Windows interfaces, verified on real machines only on Windows 11 builds **26200** and **22631**. Other builds — including Windows 10 — are installable at the UMDF 2.31 framework level only; the private GATT rumble interface is unverified there and not guaranteed. See [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) for the matrix and validation procedure. On other builds the driver automatically validates and caches a runtime-discovered device IID (vtable checks, full GATT-chain validation and a crash circuit breaker); success is not guaranteed. System updates may also change these interfaces. The audio jack works over USB. Bluetooth audio, integrated microphone activation and Wi-Fi activation are not provided. Timing figures measure HID queries and interface updates, not total physical latency through a game and display.
 
+**Project provenance: [minysito/StadiaLink](https://github.com/minysito/StadiaLink).** StadiaLink Rev is an independent derivative of that GPL-3.0 project: the application, installer, translations, documentation and build scripts come from it, with StadiaLink Rev's own modifications. The version line restarts at 1.0.0 and update checks read only stable releases of this repository, so releases or version numbers of the original project never trigger an update prompt. Original copyright notices and the GPL-3.0 license are retained; see [LICENSE](LICENSE) and [CREDITS.md](CREDITS.md). This project is not affiliated with or endorsed by the original author, Google or Microsoft.
+
 **Incorporated third-party code: [aisk/WinStadia](https://github.com/aisk/WinStadia).** It is the base of the native driver included in this repository, with StadiaLink Rev modifications. The integration covers the UMDF structure, Stadia-to-XInput input translation and USB/Bluetooth transports in `driver/`, along with derived scripts and INF.
 
-Original project: **https://github.com/aisk/WinStadia**.
+Driver source project: **https://github.com/aisk/WinStadia**.
 
 Reference commit: [e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.com/aisk/WinStadia/commit/e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a). Copyright notices are retained. StadiaLink Rev and its modifications are distributed under **GPL-3.0**; see [LICENSE](LICENSE) and [CREDITS.md](CREDITS.md). This project is independent of Google and Microsoft.

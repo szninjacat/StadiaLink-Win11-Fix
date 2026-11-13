@@ -11,6 +11,8 @@
 > **StadiaLink Rev 1.0.0** — outil indépendant de configuration de la manette Stadia sous Windows 11 x64. Il rétablit les vibrations Bluetooth sur le build 22631, utilise le chinois simplifié par défaut, garde l'application dans la zone de notification à la fermeture et valide les interfaces GATT privées sur les builds non vérifiés. Voir [RELEASE_NOTES.md](RELEASE_NOTES.md) et [docs/CHANGES.md](docs/CHANGES.md).
 >
 > **Ligne de versions indépendante** — `1.0.0` est la première version de ce projet. Les mises à jour ne sont vérifiées que dans les versions stables de ce dépôt ; aucun projet externe ne peut déclencher d'avis.
+>
+> **Origine** — StadiaLink Rev est une version dérivée indépendante de [minysito/StadiaLink](https://github.com/minysito/StadiaLink) (GPL-3.0). Sa ligne de versions démarre à 1.0.0 et la vérification des mises à jour ne consulte jamais le projet d'origine. Voir [CREDITS.md](CREDITS.md).
 
 ---
 
@@ -123,11 +125,13 @@ Le script demande les droits administrateur, retire les paquets de ce pilote et 
 
 La vibration Bluetooth utilise des interfaces privées de Windows, vérifiées sur machines réelles uniquement sous Windows 11 builds **26200** et **22631**. Les autres versions - y compris Windows 10 - ne sont installables qu'au niveau du framework UMDF 2.31 ; l'interface GATT privée n'y est pas vérifiée et son fonctionnement n'est pas garanti. Voir [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) pour la matrice et la procédure de validation. Sur les autres versions, le pilote valide et met en cache automatiquement un IID découvert à l'exécution (contrôle de la vtable, validation complète de la chaîne GATT et coupe-circuit en cas de plantage) ; le succès n'est pas garanti. Les mises à jour système peuvent également modifier ces interfaces. La prise audio fonctionne en USB. L'audio Bluetooth, l'activation du microphone intégré et du Wi-Fi ne sont pas proposés. Les temps mesurés concernent les requêtes HID et l'interface, pas la latence physique totale du jeu et de l'écran.
 
-**Code tiers intégré : [aisk/WinStadia](https://github.com/aisk/WinStadia).** Il constitue la base du pilote natif inclus dans ce dépôt, avec les modifications de StadiaLink. Cette intégration comprend la structure UMDF, la traduction des entrées Stadia vers XInput et les transports USB/Bluetooth dans `driver/`, ainsi que les scripts et le fichier INF dérivés.
+**Provenance du projet : [minysito/StadiaLink](https://github.com/minysito/StadiaLink).** StadiaLink Rev est une version dérivée indépendante de ce projet GPL-3.0 : l'application, l'installateur, les traductions, la documentation et les scripts de compilation en proviennent, avec les modifications propres à StadiaLink Rev. « Indépendant » décrit le modèle de publication et de maintenance : la ligne de versions repart de 1.0.0 et n'est ni comparée ni alignée sur les numéros du projet d'origine ; les mises à jour ne sont vérifiées que dans les versions stables de ce dépôt, de sorte qu'aucune version du projet d'origine ne déclenche d'alerte ; le dépôt est maintenu séparément et ne reçoit aucune mise à jour automatique du projet d'origine. Les mentions de copyright et la licence GPL-3.0 sont conservées ; voir [LICENSE](LICENSE) et [CREDITS.md](CREDITS.md). Ce projet n'est ni affilié ni approuvé par l'auteur d'origine, Google ou Microsoft.
 
-Dépôt original complet : **https://github.com/aisk/WinStadia**.
+**Code tiers intégré : [aisk/WinStadia](https://github.com/aisk/WinStadia).** Il constitue la base du pilote natif inclus dans ce dépôt, avec les modifications de StadiaLink Rev. Cette intégration comprend la structure UMDF, la traduction des entrées Stadia vers XInput et les transports USB/Bluetooth dans `driver/`, ainsi que les scripts et le fichier INF dérivés.
 
-Référence : [commit e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.com/aisk/WinStadia/commit/e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a). Les avis de copyright sont conservés. StadiaLink et ses modifications sont distribués sous **GPL-3.0** ; voir [LICENSE](LICENSE) et [CREDITS.md](CREDITS.md). Projet indépendant de Google et Microsoft.
+Projet source du pilote : **https://github.com/aisk/WinStadia**.
+
+Référence : [commit e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.com/aisk/WinStadia/commit/e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a). Les avis de copyright sont conservés. StadiaLink Rev et ses modifications sont distribués sous **GPL-3.0** ; voir [LICENSE](LICENSE) et [CREDITS.md](CREDITS.md). Projet indépendant de Google et Microsoft.
 
 ## ✨ Développement avec ChatGPT / Codex
 
