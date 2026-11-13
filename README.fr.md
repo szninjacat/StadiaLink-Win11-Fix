@@ -1,16 +1,16 @@
 <div align="center">
   <img src="app/assets/readme-logo.svg" width="112" height="112" alt="Logo StadiaLink">
-  <h1>StadiaLink</h1>
+  <h1>StadiaLink Rev</h1>
   <p><strong>Votre Stadia. À votre façon.</strong></p>
-  <p>Configuration de la manette Stadia pour Windows 11 x64 · Version 2.0.0 (Win11-Fix)</p>
-  <p><a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/latest"><strong>⬇ Télécharger</strong></a> · <a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/issues">Signaler un problème</a> · <a href="LICENSE">GPL-3.0</a></p>
+  <p>Configuration de la manette Stadia pour Windows 11 x64 · Version 1.0.0</p>
+  <p><a href="https://github.com/szninjacat/StadiaLink-Rev/releases/latest"><strong>⬇ Télécharger</strong></a> · <a href="https://github.com/szninjacat/StadiaLink-Rev/issues">Signaler un problème</a> · <a href="LICENSE">GPL-3.0</a></p>
   <p>🪟 Windows 11 x64 &nbsp; · &nbsp; 🎮 XInput &nbsp; · &nbsp; 🔗 USB + Bluetooth</p>
   <p><a href="README.es.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <a href="README.en.md"><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</a> &nbsp; | &nbsp; <strong><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</strong> &nbsp; | &nbsp; <a href="README.de.md"><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</a> &nbsp; | &nbsp; <a href="README.zh-CN.md">🇨🇳 简体中文</a></p>
 </div>
 
-> **Branche corrective (2026-11-09)** — corrige les vibrations Bluetooth sous Windows 11 23H2, ajoute le chinois simplifié comme langue par défaut et fait que le bouton de fermeture (ainsi qu'Alt+F4) réduit l'application dans la zone de notification au lieu de la quitter. Voir [RELEASE_NOTES.md](RELEASE_NOTES.md) et [README.zh-CN.md](README.zh-CN.md).
+> **StadiaLink Rev 1.0.0** — outil indépendant de configuration de la manette Stadia sous Windows 11 x64. Il rétablit les vibrations Bluetooth sur le build 22631, utilise le chinois simplifié par défaut, garde l'application dans la zone de notification à la fermeture et valide les interfaces GATT privées sur les builds non vérifiés. Voir [RELEASE_NOTES.md](RELEASE_NOTES.md) et [docs/CHANGES.md](docs/CHANGES.md).
 >
-> **Ligne de version indépendante (2026-11-11)** — ce fork porte la version 2.0.0, distincte de la ligne 1.x d'origine. Les mises à jour ne sont vérifiées que dans ce dépôt ; une version amont ne déclenche aucun avis.
+> **Ligne de versions indépendante** — `1.0.0` est la première version de ce projet. Les mises à jour ne sont vérifiées que dans les versions stables de ce dépôt ; aucun projet externe ne peut déclencher d'avis.
 
 ---
 
@@ -26,7 +26,7 @@
 
 ## 🚀 Installation
 
-Téléchargez `StadiaLink.Setup.exe` depuis les [versions publiées](https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/latest), lancez-le et autorisez l'installation du pilote avec les droits administrateur. Connectez la manette par USB ou associez-la dans les paramètres Bluetooth de Windows, puis allumez-la. StadiaLink détecte la manette disponible.
+Téléchargez `StadiaLink.Setup.exe` depuis les [versions publiées](https://github.com/szninjacat/StadiaLink-Rev/releases/latest), lancez-le et autorisez l'installation du pilote avec les droits administrateur. Connectez la manette par USB ou associez-la dans les paramètres Bluetooth de Windows, puis allumez-la. StadiaLink détecte la manette disponible.
 
 Le Bluetooth nécessite le firmware Bluetooth de la manette. StadiaLink ne modifie pas le firmware. L'installateur contient ses composants et le code source correspondant et fonctionne hors ligne. Il utilise .NET Framework 4.8 et les composants Windows, sans émulateur de manette ni environnement d'exécution tiers supplémentaire.
 
@@ -49,8 +49,8 @@ Get-FileHash .\StadiaLink.Setup.exe -Algorithm SHA256
 Ouvrez Windows PowerShell dans un dossier de travail. La compilation ne nécessite pas les droits administrateur ; l'installation du pilote les nécessite.
 
 ```powershell
-git clone https://github.com/szninjacat/StadiaLink-Win11-Fix.git
-cd StadiaLink-Win11-Fix
+git clone https://github.com/szninjacat/StadiaLink-Rev.git
+cd StadiaLink-Rev
 
 # Si les scripts sont bloqués, uniquement pour cette session.
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
@@ -107,7 +107,7 @@ Aucune activation du firmware ni utilité supplémentaire n'est nécessaire. `St
 
 ## 💬 Problèmes, contributions et désinstallation
 
-Ouvrez un [ticket](https://github.com/szninjacat/StadiaLink-Win11-Fix/issues) en indiquant versions de Windows et de l'application, type de connexion et étapes de reproduction. Le journal d'installation est dans `%LOCALAPPDATA%\StadiaStudio\logs\driver-install.log` ; retirez les données personnelles avant de le partager.
+Ouvrez un [ticket](https://github.com/szninjacat/StadiaLink-Rev/issues) en indiquant versions de Windows et de l'application, type de connexion et étapes de reproduction. Le journal d'installation est dans `%LOCALAPPDATA%\StadiaStudio\logs\driver-install.log` ; retirez les données personnelles avant de le partager.
 
 Les pull requests sont bienvenues. Décrivez vos vérifications et exécutez `tests/run.ps1` si vous modifiez la configuration ou la traduction des entrées. Ne publiez pas de dépendances téléchargées, binaires générés, profils personnels ou recherches sur le firmware.
 
@@ -127,7 +127,7 @@ La vibration Bluetooth utilise des interfaces privées de Windows, vérifiées s
 
 Dépôt original complet : **https://github.com/aisk/WinStadia**.
 
-Référence : [commit e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.com/aisk/WinStadia/commit/e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a). Les avis de copyright sont conservés. StadiaLink et ses modifications sont distribués sous **GPL-3.0** ; voir [LICENSE](LICENSE) et [UPSTREAM-README.md](UPSTREAM-README.md). Projet indépendant de Google et Microsoft.
+Référence : [commit e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.com/aisk/WinStadia/commit/e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a). Les avis de copyright sont conservés. StadiaLink et ses modifications sont distribués sous **GPL-3.0** ; voir [LICENSE](LICENSE) et [CREDITS.md](CREDITS.md). Projet indépendant de Google et Microsoft.
 
 ## ✨ Développement avec ChatGPT / Codex
 

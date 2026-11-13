@@ -1,16 +1,16 @@
 <div align="center">
-  <img src="app/assets/readme-logo.svg" width="112" height="112" alt="StadiaLink logo">
-  <h1>StadiaLink</h1>
+  <img src="app/assets/readme-logo.svg" width="112" height="112" alt="StadiaLink Rev logo">
+  <h1>StadiaLink Rev</h1>
   <p><strong>Your Stadia. Your way.</strong></p>
-  <p>Stadia controller configuration for Windows 11 x64 · Version 2.0.0 (Win11-Fix)</p>
-  <p><a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/latest"><strong>⬇ Download</strong></a> · <a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/issues">Report an issue</a> · <a href="LICENSE">GPL-3.0</a></p>
+  <p>Stadia controller configuration for Windows 11 x64 · Version 1.0.0</p>
+  <p><a href="https://github.com/szninjacat/StadiaLink-Rev/releases/latest"><strong>⬇ Download</strong></a> · <a href="https://github.com/szninjacat/StadiaLink-Rev/issues">Report an issue</a> · <a href="LICENSE">GPL-3.0</a></p>
   <p>🪟 Windows 11 x64 &nbsp; · &nbsp; 🎮 XInput &nbsp; · &nbsp; 🔗 USB + Bluetooth</p>
   <p><a href="README.es.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <strong><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</strong> &nbsp; | &nbsp; <a href="README.fr.md"><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</a> &nbsp; | &nbsp; <a href="README.de.md"><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</a> &nbsp; | &nbsp; <a href="README.zh-CN.md">🇨🇳 简体中文</a></p>
 </div>
 
-> **Hotfix branch (2026-11-09)** — fixes Bluetooth rumble on Windows 11 23H2, adds Simplified Chinese as the default UI language, and makes the window close button (and Alt+F4) minimize to the notification area instead of exiting. See [RELEASE_NOTES.md](RELEASE_NOTES.md) and [README.zh-CN.md](README.zh-CN.md).
+> **StadiaLink Rev 1.0.0** — an independent configuration tool for the Stadia controller on Windows 11 x64. It restores Bluetooth rumble on build 22631, ships a Simplified Chinese UI by default, keeps the app in the tray when the window is closed and validates private GATT interfaces on untested Windows builds. See [RELEASE_NOTES.md](RELEASE_NOTES.md) and [docs/CHANGES.md](docs/CHANGES.md).
 >
-> **Independent version line (2026-11-11)** — this fork is version 2.0.0, separate from upstream 1.x. Updates are checked only against this repository's releases; upstream releases never trigger an update prompt.
+> **Independent release line** — `1.0.0` is the first version of this project. Update checks only use stable releases from this repository; no external project can trigger an update prompt.
 
 ---
 
@@ -22,13 +22,17 @@
 - Per-motor vibration and a continuous test with manual stop.
 - Importable and exportable profiles.
 - Battery level, notifications, system tray and Windows startup.
-- Responsive interface in Spanish, English, French and German.
+- Responsive interface in Simplified Chinese (default), Spanish, English, French and German.
+- Bluetooth rumble repaired on Windows 11 23H2, with runtime interface validation on other builds.
+- Closing the window (or Alt+F4) minimizes to the tray; the tray menu's **Exit** ends the process.
 
 ## 🚀 Installation
 
-Download `StadiaLink.Setup.exe` from [Releases](https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/latest), run it and approve the administrator prompt for driver installation. Connect your controller by USB or pair it in Windows Bluetooth settings and turn it on. StadiaLink detects the available controller.
+Download `StadiaLink.Setup.exe` from [Releases](https://github.com/szninjacat/StadiaLink-Rev/releases/latest), run it and approve the administrator prompt for driver installation. Connect your controller by USB or pair it in Windows Bluetooth settings and turn it on. StadiaLink Rev detects the available controller.
 
-Bluetooth requires the controller's Bluetooth firmware. StadiaLink does not modify firmware. The installer includes its components and corresponding source code and works offline. It uses .NET Framework 4.8 and Windows components; no third-party controller emulator or additional runtime is required.
+Bluetooth requires the controller's Bluetooth firmware. StadiaLink Rev does not modify firmware. The installer includes its components and corresponding source code and works offline. It uses .NET Framework 4.8 and Windows components; no third-party controller emulator or additional runtime is required.
+
+Prebuilt binaries are also committed under [dist/](dist/). Before installing over a running copy, exit it from the tray menu (the single-instance lock would block the installer). If the controller does not appear afterwards, toggle Bluetooth or reconnect it.
 
 Compare the download hash with `SHA256SUMS.txt` from the same release:
 
@@ -49,8 +53,8 @@ Get-FileHash .\StadiaLink.Setup.exe -Algorithm SHA256
 Open Windows PowerShell in a working folder. Building does not require administrator privileges; installing the driver does.
 
 ```powershell
-git clone https://github.com/szninjacat/StadiaLink-Win11-Fix.git
-cd StadiaLink-Win11-Fix
+git clone https://github.com/szninjacat/StadiaLink-Rev.git
+cd StadiaLink-Rev
 
 # If scripts are blocked; applies only to this session.
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
@@ -58,7 +62,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 # Driver, application, native library and installer.
 .\app\package.ps1 -Driver
 
-# Input translation and application model tests.
+# Input translation, IID policy and application model tests.
 .\tests\run.ps1
 ```
 
@@ -88,11 +92,11 @@ If MSVC is missing, check Visual Studio's C++ workload. Missing headers or libra
 
 ## ⚙️ Usage
 
-Vibration gain applies and saves as you move its sliders. For buttons, language and other profile changes, click **Save and apply**. Switching tabs discards unsaved profile changes. The Windows startup checkbox saves immediately and starts StadiaLink in the tray when that user signs in. Continuous vibration stops with **Stop**, on tab changes, disconnection or app exit.
+Vibration gain applies and saves as you move its sliders. For buttons, language and other profile changes, click **Save and apply**. Switching tabs discards unsaved profile changes. The Windows startup checkbox saves immediately and starts StadiaLink Rev in the tray when that user signs in. Continuous vibration stops with **Stop**, on tab changes, disconnection or app exit.
 
 Keyboard shortcuts require the app to remain open, including in the tray. Configure the same push-to-talk key or combination in your game or voice app. The driver retains the applied XInput configuration when the interface closes.
 
-Profiles are stored at `%LOCALAPPDATA%\StadiaStudio\profiles.json`; the installation folder is `%LOCALAPPDATA%\Programs\StadiaStudio`. These internal names are retained for compatibility with earlier versions.
+Profiles are stored at `%LOCALAPPDATA%\StadiaStudio\profiles.json`; the installation folder is `%LOCALAPPDATA%\Programs\StadiaStudio`. These internal names are part of the app's storage layout.
 
 ## 🔋 Battery detection
 
@@ -105,9 +109,28 @@ No firmware activation or separate utility is needed. After detecting a controll
 
 **Battery unavailable** means the level could not be read; no percentage is invented. On Bluetooth, power-cycle the controller and wait for another reading. If needed, remove and pair it again so Windows re-enumerates its services. On USB, check the data connection and WinUSB interface availability. Working buttons do not guarantee access to battery data.
 
+## 🔄 Updates
+
+The app checks GitHub at startup and every six hours. Only stable, non-draft releases of `szninjacat/StadiaLink-Rev` with a plain `v`-prefixed version tag are considered; the page URL and API URL must both belong to this repository. No other repository is queried and no external project can trigger a notification. Downloads and installation are always manual from **Settings**.
+
+`StadiaLink.Setup.exe` installs the application, native library and driver. `StadiaLink.Update.exe` refreshes only the application, preserves profiles and requires a compatible installed driver; otherwise use the full installer.
+
+## 📦 Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `dist/` | Prebuilt release binaries, driver package and SHA-256 checksums. |
+| `app/` | WPF application, installer, resources and build scripts. |
+| `driver/` | UMDF driver sources, INF, installation and status scripts. |
+| `tests/` | Test suites and private-GATT probe tools. |
+| `docs/CHANGES.md` | Implementation notes. |
+| `docs/COMPATIBILITY.md` | Compatibility matrix and interface-validation strategy. |
+| `RELEASE_NOTES.md` | Full release notes for 1.0.0. |
+| `CREDITS.md` | Third-party code attribution. |
+
 ## 💬 Issues, contributions and removal
 
-Open an [issue](https://github.com/szninjacat/StadiaLink-Win11-Fix/issues) with Windows version, app version, connection type and reproduction steps. Installation logs are at `%LOCALAPPDATA%\StadiaStudio\logs\driver-install.log`; remove personal information before sharing them.
+Open an [issue](https://github.com/szninjacat/StadiaLink-Rev/issues) with Windows version, app version, connection type and reproduction steps. Installation logs are at `%LOCALAPPDATA%\StadiaStudio\logs\driver-install.log`; remove personal information before sharing them.
 
 Pull requests are welcome. Describe your checks and run `tests/run.ps1` when changing configuration or input translation. Do not commit downloaded dependencies, generated binaries, personal profiles or firmware research material.
 
@@ -121,16 +144,10 @@ This requests administrator privileges, removes this driver's packages and retur
 
 ## 🤝 Compatibility, credits and license
 
-Bluetooth vibration uses private Windows interfaces, verified on real machines only on Windows 11 builds **26200** and **22631**. Other builds - including Windows 10 - are installable at the UMDF 2.31 framework level only; the private GATT rumble interface is unverified there and not guaranteed. See [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) for the matrix and validation procedure. On other builds the driver automatically validates and caches a runtime-discovered device IID (vtable checks, full GATT-chain validation and a crash circuit breaker); success is not guaranteed. System updates may also change these interfaces. The audio jack works over USB. Bluetooth audio, integrated microphone activation and Wi-Fi activation are not provided. Timing figures measure HID queries and interface updates, not total physical latency through a game and display.
+Bluetooth vibration uses private Windows interfaces, verified on real machines only on Windows 11 builds **26200** and **22631**. Other builds — including Windows 10 — are installable at the UMDF 2.31 framework level only; the private GATT rumble interface is unverified there and not guaranteed. See [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) for the matrix and validation procedure. On other builds the driver automatically validates and caches a runtime-discovered device IID (vtable checks, full GATT-chain validation and a crash circuit breaker); success is not guaranteed. System updates may also change these interfaces. The audio jack works over USB. Bluetooth audio, integrated microphone activation and Wi-Fi activation are not provided. Timing figures measure HID queries and interface updates, not total physical latency through a game and display.
 
-**Incorporated third-party code: [aisk/WinStadia](https://github.com/aisk/WinStadia).** It is the base of the native driver included in this repository, with StadiaLink modifications. The integration covers the UMDF structure, Stadia-to-XInput input translation and USB/Bluetooth transports in `driver/`, along with derived scripts and INF.
+**Incorporated third-party code: [aisk/WinStadia](https://github.com/aisk/WinStadia).** It is the base of the native driver included in this repository, with StadiaLink Rev modifications. The integration covers the UMDF structure, Stadia-to-XInput input translation and USB/Bluetooth transports in `driver/`, along with derived scripts and INF.
 
-Full upstream repository: **https://github.com/aisk/WinStadia**.
+Original project: **https://github.com/aisk/WinStadia**.
 
-Upstream reference: [commit e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.com/aisk/WinStadia/commit/e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a). Copyright notices are retained. StadiaLink and its modifications are distributed under **GPL-3.0**; see [LICENSE](LICENSE) and [UPSTREAM-README.md](UPSTREAM-README.md). This project is independent of Google and Microsoft.
-
-## ✨ Development with ChatGPT / Codex
-
-The project is managed and developed with **ChatGPT / Codex**, using **vibe coding**: the project owner defines features and reviews results; Codex helps implement, investigate, document and run checks. Physical-controller testing and change review are part of the work. This assistance does not imply certification or endorsement by OpenAI, Google or Microsoft.
-
-Vibration gain applies and saves as you move its sliders. Tests use the same gain as games. The app checks for releases at startup and every six hours; downloads are manual from Settings. `StadiaLink.Setup.exe` includes the app and driver. `StadiaLink.Update.exe` updates only the app, preserves profiles and requires a compatible installed driver; otherwise use the full installer.
+Reference commit: [e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.com/aisk/WinStadia/commit/e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a). Copyright notices are retained. StadiaLink Rev and its modifications are distributed under **GPL-3.0**; see [LICENSE](LICENSE) and [CREDITS.md](CREDITS.md). This project is independent of Google and Microsoft.

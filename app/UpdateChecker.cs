@@ -15,14 +15,13 @@ namespace StadiaStudio {
         [DataMember(Name="prerelease")] public bool Prerelease;
         public Version Version;
     }
-    // Independent fork: the upstream project uses the 1.x version line. This
-    // build starts at 2.0.0 and must never offer an upstream release as an
-    // update, even if someone publishes one with a higher 1.x number.
+    // StadiaLink Rev uses its own 1.0 version line. Only stable releases
+    // published in this repository are accepted; a different repository, host,
+    // pre-release or malformed tag is rejected before any version comparison.
     public static class UpdateChecker {
-        public const string Repository="szninjacat/StadiaLink-Win11-Fix";
+        public const string Repository="szninjacat/StadiaLink-Rev";
         public const string ReleasesUrl="https://github.com/"+Repository+"/releases/latest";
         public const string ApiUrl="https://api.github.com/repos/"+Repository+"/releases/latest";
-        public const int ChannelMinimumMajor=2;
         public static Version Current {get{return Assembly.GetExecutingAssembly().GetName().Version;}}
         public static PublishedRelease Parse(string json){
             PublishedRelease release;
@@ -31,7 +30,6 @@ namespace StadiaStudio {
             if(release==null||release.Draft||release.Prerelease||String.IsNullOrWhiteSpace(release.Tag)||
                (release.Tag[0]!='v'&&release.Tag[0]!='V')||
                !System.Version.TryParse(release.Tag.TrimStart('v','V'),out version)||
-               version.Major<ChannelMinimumMajor||
                !Uri.TryCreate(release.Url,UriKind.Absolute,out uri)||uri.Scheme!="https"||
                !String.Equals(uri.Host,"github.com",StringComparison.OrdinalIgnoreCase)||
                !uri.AbsolutePath.StartsWith("/"+Repository+"/releases/tag/",StringComparison.OrdinalIgnoreCase)||!String.IsNullOrEmpty(uri.UserInfo)||
@@ -45,7 +43,7 @@ namespace StadiaStudio {
         public static Task<PublishedRelease> Check(){return Task.Run(()=>{
             ServicePointManager.SecurityProtocol|=SecurityProtocolType.Tls12;
             var request=(HttpWebRequest)WebRequest.Create(ApiUrl);
-            request.UserAgent="StadiaLink-Win11-Fix/"+Current;request.Accept="application/vnd.github+json";request.Headers["X-GitHub-Api-Version"]="2022-11-28";
+            request.UserAgent="StadiaLink-Rev/"+Current;request.Accept="application/vnd.github+json";request.Headers["X-GitHub-Api-Version"]="2022-11-28";
             request.Timeout=request.ReadWriteTimeout=10000;request.AllowAutoRedirect=false;
             using(var response=(HttpWebResponse)request.GetResponse())using(var stream=response.GetResponseStream())using(var reader=new StreamReader(stream)){
                 char[] buffer=new char[4096];var body=new StringBuilder();int count;
@@ -54,18 +52,17 @@ namespace StadiaStudio {
             }
         });}
         public static void Verify(){
-            const string page="https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/tag/v2.0.10";
-            const string api="https://api.github.com/repos/szninjacat/StadiaLink-Win11-Fix/releases/999";
-            const string valid="{\"tag_name\":\"v2.0.10\",\"html_url\":\""+page+"\",\"url\":\""+api+"\"}";
+            const string page="https://github.com/szninjacat/StadiaLink-Rev/releases/tag/v1.0.10";
+            const string api="https://api.github.com/repos/szninjacat/StadiaLink-Rev/releases/999";
+            const string valid="{\"tag_name\":\"v1.0.10\",\"html_url\":\""+page+"\",\"url\":\""+api+"\"}";
             var release=Parse(valid);
-            if(release==null||!IsNewer(release,new Version(2,0,0))||IsNewer(release,new Version(2,0,10,0))||IsNewer(release,new Version(3,0)))throw new Exception("Update version ordering failed.");
-            if(ReleasesUrl.Contains("minysito")||ApiUrl.Contains("minysito"))throw new Exception("Update channel points at upstream.");
+            if(release==null||!IsNewer(release,new Version(1,0,0))||IsNewer(release,new Version(1,0,10,0))||IsNewer(release,new Version(2,0)))throw new Exception("Update version ordering failed.");
+            if(!String.Equals(Repository,"szninjacat/StadiaLink-Rev")||!ApiUrl.Contains("/"+Repository+"/"))throw new Exception("Update channel points outside this project.");
             if(Parse(valid.Replace("github.com","example.org"))!=null||
-               Parse(valid.Replace("/szninjacat/StadiaLink-Win11-Fix/releases/tag/","/minysito/StadiaLink/releases/tag/"))!=null||
-               Parse(valid.Replace("/repos/szninjacat/StadiaLink-Win11-Fix/releases/","/repos/minysito/StadiaLink/releases/"))!=null||
-               Parse(valid.Replace("v2.0.10","v1.0.3"))!=null||
-               Parse(valid.Replace("v2.0.10","v1.0.2-hotfix"))!=null||
-               Parse(valid.Replace("v2.0.10","v2.1.0-beta"))!=null||
+               Parse(valid.Replace("/szninjacat/StadiaLink-Rev/releases/tag/","/other/StadiaLink/releases/tag/"))!=null||
+               Parse(valid.Replace("/repos/szninjacat/StadiaLink-Rev/releases/","/repos/other/StadiaLink/releases/"))!=null||
+               Parse(valid.Replace("v1.0.10","v1.0.10-beta"))!=null||
+               Parse(valid.Replace("v1.0.10","1.0.10"))!=null||
                Parse(valid.Replace(",\"url\":\""+api+"\"",""))!=null||
                Parse(valid.Replace("}",",\"draft\":true}"))!=null||
                Parse(valid.Replace("}",",\"prerelease\":true}"))!=null)throw new Exception("Untrusted or out-of-channel release accepted.");

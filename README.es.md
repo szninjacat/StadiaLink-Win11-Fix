@@ -1,16 +1,16 @@
 <div align="center">
   <img src="app/assets/readme-logo.svg" width="112" height="112" alt="StadiaLink logo">
-  <h1>StadiaLink</h1>
+  <h1>StadiaLink Rev</h1>
   <p><strong>Tu Stadia. A tu manera.</strong></p>
-  <p>Configuración del mando Stadia para Windows 11 x64 · Versión 2.0.0 (Win11-Fix)</p>
-  <p><a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/latest"><strong>⬇ Descargar</strong></a> · <a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/issues">Comunicar un problema</a> · <a href="LICENSE">GPL-3.0</a></p>
+  <p>Configuración del mando Stadia para Windows 11 x64 · Versión 1.0.0</p>
+  <p><a href="https://github.com/szninjacat/StadiaLink-Rev/releases/latest"><strong>⬇ Descargar</strong></a> · <a href="https://github.com/szninjacat/StadiaLink-Rev/issues">Comunicar un problema</a> · <a href="LICENSE">GPL-3.0</a></p>
   <p>🪟 Windows 11 x64 &nbsp; · &nbsp; 🎮 XInput &nbsp; · &nbsp; 🔗 USB + Bluetooth</p>
   <p><strong><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</strong> &nbsp; | &nbsp; <a href="README.en.md"><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</a> &nbsp; | &nbsp; <a href="README.fr.md"><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</a> &nbsp; | &nbsp; <a href="README.de.md"><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</a> &nbsp; | &nbsp; <a href="README.zh-CN.md">🇨🇳 简体中文</a></p>
 </div>
 
-> **简体中文修复分支（2026-11-09）** — 本分支修复 Windows 11 23H2 上蓝牙震动失效，新增简体中文界面（默认语言），并修复窗口「×」直接退出程序的问题（现改为最小化到系统托盘）。[README.zh-CN.md](README.zh-CN.md) 是完整的简体中文文档；版本说明见 [RELEASE_NOTES.md](RELEASE_NOTES.md)、[CHANGELOG.md](CHANGELOG.md) 与 [docs/CHANGES.md](docs/CHANGES.md)。
+> **StadiaLink Rev 1.0.0** — herramienta independiente para configurar el mando Stadia en Windows 11 x64. Restaura la vibración Bluetooth en la compilación 22631, usa chino simplificado por defecto, mantiene la aplicación en la bandeja al cerrar la ventana y valida las interfaces GATT privadas en compilaciones no verificadas. Consulta [RELEASE_NOTES.md](RELEASE_NOTES.md) y [docs/CHANGES.md](docs/CHANGES.md).
 >
-> **Línea de versión independiente (2026-11-11)** — este fork usa la versión 2.0.0, separada de la línea 1.x original. Las actualizaciones se comprueban solo en este repositorio; una versión del proyecto original no genera avisos.
+> **Línea de versiones propia** — `1.0.0` es la primera versión de este proyecto. Las actualizaciones se comprueban solo en las versiones estables de este repositorio; ningún proyecto externo puede generar avisos.
 
 ---
 
@@ -28,7 +28,7 @@
 
 Ejecuta `StadiaLink.Setup.exe`. La instalación del controlador requiere permiso de administrador. El instalador incluye sus componentes y funciona sin Internet. Empareja el mando desde los ajustes Bluetooth de Windows o conéctalo por USB.
 
-Descarga el instalador desde [Releases](https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/latest). Para Bluetooth, el mando debe tener el firmware Bluetooth instalado; StadiaLink no modifica su firmware. No requiere emuladores de mando ni runtimes adicionales de terceros: utiliza .NET Framework 4.8 y componentes de Windows.
+Descarga el instalador desde [Releases](https://github.com/szninjacat/StadiaLink-Rev/releases/latest). Para Bluetooth, el mando debe tener el firmware Bluetooth instalado; StadiaLink no modifica su firmware. No requiere emuladores de mando ni runtimes adicionales de terceros: utiliza .NET Framework 4.8 y componentes de Windows.
 
 Comprueba la descarga comparando el resultado con `SHA256SUMS.txt` de la misma versión:
 
@@ -51,8 +51,8 @@ Get-FileHash .\StadiaLink.Setup.exe -Algorithm SHA256
 Abre Windows PowerShell en una carpeta de trabajo. Compilar no requiere permisos de administrador; instalar el controlador sí.
 
 ```powershell
-git clone https://github.com/szninjacat/StadiaLink-Win11-Fix.git
-cd StadiaLink-Win11-Fix
+git clone https://github.com/szninjacat/StadiaLink-Rev.git
+cd StadiaLink-Rev
 
 # Si los scripts están bloqueados, solo para esta sesión.
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
@@ -115,7 +115,7 @@ Si aparece **Batería: no disponible**, no se ha podido consultar el nivel y no 
 
 ## 💬 Problemas, contribuciones y desinstalación
 
-Abre un [issue](https://github.com/szninjacat/StadiaLink-Win11-Fix/issues) indicando versión de Windows, versión de la app, USB o Bluetooth y pasos para reproducir el fallo. El registro de instalación está en `%LOCALAPPDATA%\StadiaStudio\logs\driver-install.log`; revisa y elimina información personal antes de adjuntarlo.
+Abre un [issue](https://github.com/szninjacat/StadiaLink-Rev/issues) indicando versión de Windows, versión de la app, USB o Bluetooth y pasos para reproducir el fallo. El registro de instalación está en `%LOCALAPPDATA%\StadiaStudio\logs\driver-install.log`; revisa y elimina información personal antes de adjuntarlo.
 
 Las contribuciones mediante pull request son bienvenidas. Incluye los pasos de comprobación y ejecuta `tests/run.ps1` cuando cambies la configuración o la traducción de entradas. No subas dependencias descargadas, binarios generados, perfiles personales ni material de investigación de firmware.
 
@@ -131,7 +131,7 @@ Solicita permisos de administrador, elimina los paquetes de este controlador y d
 
 El transporte de vibración Bluetooth utiliza interfaces privadas de Windows, verificadas en equipos reales solo en Windows 11 builds **26200** y **22631**. En otras versiones -incluido Windows 10- solo se garantiza la instalabilidad del framework UMDF 2.31; la interfaz GATT privada no está verificada y no se garantiza su funcionamiento. Consulta la matriz y el procedimiento de validación en [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md). En otras versiones, el controlador valida y almacena automáticamente un IID descubierto en tiempo de ejecución (comprobación de vtable, validación completa de la cadena GATT y cortocircuito ante fallos); el éxito no está garantizado. Las actualizaciones del sistema también pueden cambiar estas interfaces.
 
-GPL-3.0. El controlador parte de [aisk/WinStadia](https://github.com/aisk/WinStadia). Consulta [LICENSE](LICENSE) y [UPSTREAM-README.md](UPSTREAM-README.md). Proyecto independiente de Google y Microsoft.
+GPL-3.0. El controlador parte de [aisk/WinStadia](https://github.com/aisk/WinStadia). Consulta [LICENSE](LICENSE) y [CREDITS.md](CREDITS.md). Proyecto independiente de Google y Microsoft.
 
 **Código de terceros incorporado: [aisk/WinStadia](https://github.com/aisk/WinStadia).** Es la base del controlador nativo incluido en este repositorio, con modificaciones de StadiaLink. La integración comprende la estructura UMDF, la traducción de entradas Stadia a XInput y los transportes USB/Bluetooth en `driver/`, además de los scripts e INF derivados.
 

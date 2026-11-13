@@ -1,15 +1,15 @@
-# StadiaLink 2.0.0 · Win11-Fix
+# StadiaLink Rev 1.0.0 — user guide
 
-Selecciona un perfil, ajusta los controles y pulsa Guardar y aplicar. Los cambios del perfil se descartan al cambiar de pestaña sin guardar.
+Select a profile, adjust the controls and click **Save and apply**. Unsaved profile changes are discarded when you switch tabs.
 
-- Mando: selecciona un botón del dibujo y asigna su función.
-- Sticks y gatillos: compara entrada física y salida configurada; ajusta sensibilidad, zona muerta e inversión.
-- Vibración: prueba cada motor o activa Vibración continua. Detener, cambiar de pestaña o cerrar detiene la prueba.
-- Perfiles: crea, duplica, importa y exporta configuraciones.
-- Ajustes: idioma, inicio con Windows, notificaciones, dispositivo y medición de respuesta.
+- **Controller**: choose a button in the diagram and assign its function.
+- **Sticks and triggers**: compare physical input with the configured output; adjust sensitivity, dead zone and inversion.
+- **Vibration**: test each motor or enable continuous vibration. **Stop**, switching tabs or closing stops the test.
+- **Profiles**: create, duplicate, import and export configurations.
+- **Settings**: language, Windows startup, notifications, device and response measurement.
 
-El inicio con Windows se guarda al marcar la casilla. Los atajos necesitan StadiaLink abierto, también en la bandeja. Configura la misma combinación en el juego o Discord para usar pulsar para hablar.
+The Windows startup checkbox saves immediately. Keyboard shortcuts require StadiaLink Rev to stay open, including in the tray. Configure the same combination in your game or voice app for push to talk.
 
-Los perfiles se conservan en `%LOCALAPPDATA%/StadiaStudio/profiles.json`; la ruta mantiene compatibilidad con las instalaciones anteriores. La desinstalación conserva los perfiles y permite elegir si retirar el controlador.
+Profiles are stored in `%LOCALAPPDATA%/StadiaStudio/profiles.json`; this path is part of the app's storage layout. Uninstalling keeps profiles and lets you choose whether to remove the driver.
 
-La fuerza de vibración se aplica y guarda al mover las barras. Las pruebas usan la misma ganancia que el juego. En Ajustes puedes comprobar nuevas versiones de este fork (StadiaLink-Win11-Fix, línea 2.x) y abrir sus descargas en GitHub; nunca se consulta el repositorio original. La descarga y la instalación son manuales. El paquete de actualización conserva perfiles y requiere un controlador compatible.
+Vibration gain is applied and saved as you move the sliders; tests use the same gain as games. In **Settings** you can check for newer stable releases of this project (`szninjacat/StadiaLink-Rev`, 1.x version line) and open their downloads on GitHub. No other repository is queried. Downloads and installation are manual. The application-only update package preserves profiles and requires a compatible installed driver; otherwise use the full installer.

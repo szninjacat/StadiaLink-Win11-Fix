@@ -12,7 +12,7 @@ Copy-Item "$release\StadiaLink.exe","$release\StadiaLink.exe.config" $stage
 Copy-Item "$release\StadiaDevice.dll" $stage
 Copy-Item "$root\driver\out\pkg\winstadia.dll","$root\driver\out\pkg\winstadia.inf" (Join-Path $stage 'driver/pkg')
 Copy-Item "$root\driver\install.ps1" (Join-Path $stage 'driver')
-Copy-Item "$root\LICENSE","$root\UPSTREAM-README.md","$PSScriptRoot\USO.md" $stage
+Copy-Item "$root\LICENSE","$root\CREDITS.md","$PSScriptRoot\USO.md" $stage
 $driverIdentity=New-Object Text.StringBuilder
 Get-ChildItem (Join-Path $root 'driver') -File | Where-Object {$_.Extension -in '.c','.cpp','.h','.inf','.ps1'} | Sort-Object Name | ForEach-Object {
     [void]$driverIdentity.Append($_.Name+"`n"+[IO.File]::ReadAllText($_.FullName).Replace("`r`n","`n")+"`n")
@@ -29,7 +29,7 @@ foreach($name in @('app','driver','tests')){
     Get-ChildItem (Join-Path $root $name) -File | Where-Object {$_.Extension -in '.cs','.c','.cpp','.h','.ps1','.inf','.manifest','.config','.md'} | Copy-Item -Destination $target
 }
 Copy-Item -LiteralPath "$PSScriptRoot\assets" -Destination (Join-Path $sourceStage 'app/assets') -Recurse
-Copy-Item "$root\LICENSE","$root\UPSTREAM-README.md","$root\README*.md","$root\CHANGELOG.md" $sourceStage
+Copy-Item "$root\LICENSE","$root\CREDITS.md","$root\README*.md","$root\CHANGELOG.md" $sourceStage
 Compress-Archive -Path "$sourceStage\*" -DestinationPath "$stage\Source.zip" -Force
 $payload=Join-Path $scratch 'payload.zip'
 Compress-Archive -Path "$stage\*" -DestinationPath $payload -Force
@@ -49,7 +49,7 @@ Write-Output "Installer ready: $release\StadiaLink.Setup.exe"
 # Application-only update: identical source and runtime files, no driver install.
 $updateStage=Join-Path $scratch 'update-stage'
 New-Item -ItemType Directory -Force $updateStage | Out-Null
-foreach($name in @('StadiaLink.exe','StadiaLink.exe.config','StadiaDevice.dll','Source.zip','LICENSE','UPSTREAM-README.md','USO.md','Driver.sha256')){Copy-Item -LiteralPath (Join-Path $stage $name) -Destination $updateStage -Force}
+foreach($name in @('StadiaLink.exe','StadiaLink.exe.config','StadiaDevice.dll','Source.zip','LICENSE','CREDITS.md','USO.md','Driver.sha256')){Copy-Item -LiteralPath (Join-Path $stage $name) -Destination $updateStage -Force}
 $updatePayload=Join-Path $scratch 'update-payload.zip'
 Compress-Archive -Path "$updateStage\*" -DestinationPath $updatePayload -Force
 $updateHash=(Get-FileHash $updatePayload -Algorithm SHA256).Hash
@@ -57,6 +57,6 @@ Set-Content -LiteralPath $hashSource -Value ('namespace StadiaStudio { public st
 & "$framework\csc.exe" /nologo /target:winexe /platform:x64 /optimize+ /codepage:65001 /define:UPDATE_ONLY /win32manifest:"$PSScriptRoot\app.manifest" /win32icon:"$PSScriptRoot\StadiaLink.ico" /out:"$release\StadiaLink.Update.exe" /resource:"$updatePayload,payload.zip" /resource:"$root\LICENSE,LICENSE" /resource:"$PSScriptRoot\assets\locales.tsv,locales.tsv" $refs $sources $hashSource
 if($LASTEXITCODE){throw 'Update compilation failed'}
 Copy-Item "$PSScriptRoot\StadiaLink.exe.config" "$release\StadiaLink.Update.exe.config"
-Copy-Item (Join-Path $stage 'Source.zip') (Join-Path $release 'StadiaLink-2.0.0-source.zip') -Force
-@('StadiaLink.Setup.exe','StadiaLink.Update.exe','StadiaLink-2.0.0-source.zip') | ForEach-Object {$name=$_;(Get-FileHash (Join-Path $release $name) -Algorithm SHA256).Hash.ToLowerInvariant()+'  '+$name} | Set-Content (Join-Path $release 'SHA256SUMS.txt') -Encoding utf8
+Copy-Item (Join-Path $stage 'Source.zip') (Join-Path $release 'StadiaLink-Rev-1.0.0-source.zip') -Force
+@('StadiaLink.Setup.exe','StadiaLink.Update.exe','StadiaLink-Rev-1.0.0-source.zip') | ForEach-Object {$name=$_;(Get-FileHash (Join-Path $release $name) -Algorithm SHA256).Hash.ToLowerInvariant()+'  '+$name} | Set-Content (Join-Path $release 'SHA256SUMS.txt') -Encoding utf8
 Write-Output "Update ready: $release\StadiaLink.Update.exe"

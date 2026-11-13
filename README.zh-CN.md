@@ -1,16 +1,16 @@
 <div align="center">
   <img src="app/assets/readme-logo.svg" width="112" height="112" alt="StadiaLink 标志">
-  <h1>StadiaLink</h1>
+  <h1>StadiaLink Rev</h1>
   <p><strong>你的 Stadia 手柄，由你定义。</strong></p>
-  <p>Windows 11 x64 上的 Stadia 手柄配置工具 · 版本 2.0.0 (Win11-Fix)</p>
-  <p><a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/latest"><strong>⬇ 下载</strong></a> · <a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/issues">反馈问题</a> · <a href="LICENSE">GPL-3.0</a></p>
+  <p>Windows 11 x64 上的 Stadia 手柄配置工具 · 版本 1.0.0</p>
+  <p><a href="https://github.com/szninjacat/StadiaLink-Rev/releases/latest"><strong>⬇ 下载</strong></a> · <a href="https://github.com/szninjacat/StadiaLink-Rev/issues">反馈问题</a> · <a href="LICENSE">GPL-3.0</a></p>
   <p>🪟 Windows 11 x64 &nbsp; · &nbsp; 🎮 XInput &nbsp; · &nbsp; 🔗 USB + 蓝牙</p>
   <p><a href="README.es.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <a href="README.en.md"><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</a> &nbsp; | &nbsp; <a href="README.fr.md"><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</a> &nbsp; | &nbsp; <a href="README.de.md"><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</a> &nbsp; | &nbsp; <strong>🇨🇳 简体中文</strong></p>
 </div>
 
-> **简体中文修复分支（2026-11-09）**：本分支修复 Windows 11 23H2 上蓝牙震动失效，将界面默认语言改为简体中文，并修复窗口「×」直接退出程序的问题。完整说明见 [RELEASE_NOTES.md](RELEASE_NOTES.md)、[CHANGELOG.md](CHANGELOG.md) 与 [docs/CHANGES.md](docs/CHANGES.md)；编译产物在 [dist/](dist/)。
+> **StadiaLink Rev 1.0.0**：独立的 Stadia 手柄配置工具，修复 Windows 11 23H2 蓝牙震动失效，界面默认简体中文，窗口「×」与 Alt+F4 最小化到系统托盘，并对未验证的 Windows 版本自动校验私有 GATT 接口。完整说明见 [RELEASE_NOTES.md](RELEASE_NOTES.md)、[CHANGELOG.md](CHANGELOG.md) 与 [docs/CHANGES.md](docs/CHANGES.md)；编译产物在 [dist/](dist/)。
 >
-> **独立版本线（2026-11-11）**：程序版本为 `2.0.0`，与上游 1.x 完全分离；只从本仓库的 Release 检查更新，上游发布新版本不会再弹出提示。
+> **独立版本线**：`1.0.0` 是本项目的首个版本，只从本仓库的正式 Release 检查更新，不受任何外部项目版本影响。
 
 ---
 
@@ -26,11 +26,11 @@
 
 ## 🚀 安装
 
-从 [Releases](https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/latest) 下载 `StadiaLink.Setup.exe` 运行，并在提示时为驱动安装授予管理员权限。通过 USB 连接手柄，或在 Windows 蓝牙设置中配对后开机，StadiaLink 会自动识别。安装包内含全部组件与对应源码，可离线安装。
+从 [Releases](https://github.com/szninjacat/StadiaLink-Rev/releases/latest) 下载 `StadiaLink.Setup.exe` 运行，并在提示时为驱动安装授予管理员权限。通过 USB 连接手柄，或在 Windows 蓝牙设置中配对后开机，StadiaLink 会自动识别。安装包内含全部组件与对应源码，可离线安装。
 
 蓝牙连接要求手柄本身已具备蓝牙固件，StadiaLink 不会修改固件。程序仅依赖 .NET Framework 4.8 与 Windows 自带组件，不需要第三方手柄模拟器或额外运行时。
 
-本分支的编译产物也已放在 [dist/](dist/) 中，可直接双击 `StadiaLink.Setup.exe` 安装。**升级前请先退出托盘中正在运行的旧版 StadiaLink**（单实例锁会阻止安装）；若安装后手柄未出现，关开一次蓝牙或重新插拔即可。
+编译产物也已放在 [dist/](dist/) 中，可直接双击 `StadiaLink.Setup.exe` 安装。**升级前请先退出托盘中正在运行的旧版 StadiaLink**（单实例锁会阻止安装）；若安装后手柄未出现，关开一次蓝牙或重新插拔即可。
 
 用同版本的 `SHA256SUMS.txt` 核对下载文件：
 
@@ -53,8 +53,8 @@ Get-FileHash .\StadiaLink.Setup.exe -Algorithm SHA256
 在工作目录打开 Windows PowerShell。编译不需要管理员权限，安装驱动才需要。
 
 ```powershell
-git clone https://github.com/szninjacat/StadiaLink-Win11-Fix.git
-cd StadiaLink-Win11-Fix
+git clone https://github.com/szninjacat/StadiaLink-Rev.git
+cd StadiaLink-Rev
 
 # 若脚本被阻止执行，仅对本次会话生效。
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
@@ -90,7 +90,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 
 缺少 MSVC 时检查 Visual Studio 的 C++ 工作负载；缺少头文件/库时安装指定 SDK；WDK 下载失败时检查 NuGet 连通性。驱动会写入构建日期与版本，因此不同批次构建的二进制不一定完全相同。
 
-### 本分支新增的构建开关
+### 本项目新增的构建开关
 
 默认行为完全不变，仅在特殊环境（CI、受限沙箱）中使用：
 
@@ -120,11 +120,11 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 
 显示**电量不可用**表示读取失败，不会臆造百分比。蓝牙下可关闭再打开手柄等待下一次读取，必要时删除配对后重新配对以让 Windows 重新枚举服务；USB 下检查数据线与 WinUSB 接口。按键可用并不保证 Windows 一定暴露电量接口。
 
-## 🐛 蓝牙震动兼容性（本分支重点）
+## 🐛 蓝牙震动兼容性（本项目重点）
 
 蓝牙震动通过未公开的私有 WinRT 接口 `GattClientDevice` 写入 HID 输出报告。原版驱动只硬编码了从 Windows **26200** 逆向得到的设备接口 IID `6BBEDE1F-797F-5C17-8AC7-3F342037CB59`；在 Windows 11 23H2（**Build 22631**）上该类实际使用 `0799A6A6-E942-5218-8A0E-7C9B996E4158`，因此 `QueryInterface` 返回 `E_NOINTERFACE`（`0x80004002`），表现为「蓝牙连接正常但没有震动」。
 
-本分支的修复：
+本项目的修复：
 
 - 依次尝试两个**已在实机验证**的设备接口 IID（26200、22631）；`QueryInterface` 只有返回 `E_NOINTERFACE` 才继续尝试，其他 HRESULT 立即上报，不再被掩盖。
 - 对未知 build **默认自动适配**：`IInspectable::GetIids` 枚举候选 → vtable 静态校验 → 完整 HID GATT 链路语义验证（HID 服务 UUID、Report Reference `5/2`）→ SEH 隔离调用；全部通过才使用，并把该 IID 缓存供下次开机直接复用。
@@ -145,7 +145,7 @@ python .\tests\probe-private-gatt.py     # 只读枚举本机私有接口 IID
 
 ## 💬 问题反馈、贡献与卸载
 
-提交 [issue](https://github.com/szninjacat/StadiaLink-Win11-Fix/issues) 时请附上 Windows 版本、应用版本、USB 或蓝牙连接方式及复现步骤。安装日志位于 `%LOCALAPPDATA%\StadiaStudio\logs\driver-install.log`，分享前请删除个人信息。
+提交 [issue](https://github.com/szninjacat/StadiaLink-Rev/issues) 时请附上 Windows 版本、应用版本、USB 或蓝牙连接方式及复现步骤。安装日志位于 `%LOCALAPPDATA%\StadiaStudio\logs\driver-install.log`，分享前请删除个人信息。
 
 欢迎 pull request：请说明验证步骤，改动配置或输入翻译时运行 `tests/run.ps1`。不要提交下载的依赖、生成的二进制、个人配置文件或固件研究材料。
 
@@ -163,7 +163,7 @@ python .\tests\probe-private-gatt.py     # 只读枚举本机私有接口 IID
 
 **已并入的第三方代码：[aisk/WinStadia](https://github.com/aisk/WinStadia)**。它是本仓库原生驱动的基础，包含 StadiaLink 的修改：UMDF 结构、Stadia 到 XInput 的输入翻译、`driver/` 中的 USB/蓝牙传输，以及派生脚本与 INF。
 
-上游仓库：**https://github.com/aisk/WinStadia**；参考提交：[e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.com/aisk/WinStadia/commit/e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a)。保留原有版权声明。StadiaLink 及其修改以 **GPL-3.0** 发布，见 [LICENSE](LICENSE) 与 [UPSTREAM-README.md](UPSTREAM-README.md)。本项目与 Google、Microsoft 无隶属关系。
+原始项目：**https://github.com/aisk/WinStadia**；参考提交：[e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.com/aisk/WinStadia/commit/e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a)。保留原有版权声明。StadiaLink Rev 及其修改以 **GPL-3.0** 发布，见 [LICENSE](LICENSE) 与 [CREDITS.md](CREDITS.md)。本项目与 Google、Microsoft 无隶属关系。
 
 ## ✨ 开发方式
 
@@ -171,14 +171,13 @@ python .\tests\probe-private-gatt.py     # 只读枚举本机私有接口 IID
 
 震动增益在拖动滑块时应用并保存，测试使用与游戏相同的增益。应用启动时及之后每六小时检查一次新版本，下载需在「设置」中手动完成。`StadiaLink.Setup.exe` 同时包含应用与驱动；`StadiaLink.Update.exe` 只更新应用，会保留配置文件并要求已安装兼容的驱动，否则请使用完整安装包。
 
-## 📦 本分支交付内容
+## 📦 项目交付内容
 
 | 路径 | 说明 |
 | --- | --- |
 | `app/`、`driver/`、`tests/` | 改动后的完整源码与构建脚本。 |
 | `dist/` | 本次编译产物（简体中文安装包、主程序、更新包、原生库、驱动 DLL/INF，含关闭按钮修复、审查加固与未知系统自动适配）与 SHA-256 清单。 |
-| `RELEASE_NOTES.md` | 本分支版本说明：根因、改动、产物、验证与使用。 |
+| `RELEASE_NOTES.md` | 版本说明：根因、改动、产物、验证与使用。 |
 | `CHANGELOG.md` | 更新后的版本历史。 |
 | `docs/CHANGES.md` | 逐文件改动说明与排除清单。 |
 | `docs/COMPATIBILITY.md` | 兼容性矩阵、分层自动适配与熔断机制、缓存/黑名单重置方法及新增 IID 的实机验证流程。 |
-| `patches/v1.0.2-hotfix.patch` | 相对 1.0.2 的可应用代码补丁。 |

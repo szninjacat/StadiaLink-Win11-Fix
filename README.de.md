@@ -1,16 +1,16 @@
 <div align="center">
   <img src="app/assets/readme-logo.svg" width="112" height="112" alt="StadiaLink-Logo">
-  <h1>StadiaLink</h1>
+  <h1>StadiaLink Rev</h1>
   <p><strong>Dein Stadia. Deine Einstellungen.</strong></p>
-  <p>Stadia-Controller für Windows 11 x64 konfigurieren · Version 2.0.0 (Win11-Fix)</p>
-  <p><a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/latest"><strong>⬇ Herunterladen</strong></a> · <a href="https://github.com/szninjacat/StadiaLink-Win11-Fix/issues">Problem melden</a> · <a href="LICENSE">GPL-3.0</a></p>
+  <p>Stadia-Controller für Windows 11 x64 konfigurieren · Version 1.0.0</p>
+  <p><a href="https://github.com/szninjacat/StadiaLink-Rev/releases/latest"><strong>⬇ Herunterladen</strong></a> · <a href="https://github.com/szninjacat/StadiaLink-Rev/issues">Problem melden</a> · <a href="LICENSE">GPL-3.0</a></p>
   <p>🪟 Windows 11 x64 &nbsp; · &nbsp; 🎮 XInput &nbsp; · &nbsp; 🔗 USB + Bluetooth</p>
   <p><a href="README.es.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <a href="README.en.md"><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</a> &nbsp; | &nbsp; <a href="README.fr.md"><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</a> &nbsp; | &nbsp; <strong><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</strong> &nbsp; | &nbsp; <a href="README.zh-CN.md">🇨🇳 简体中文</a></p>
 </div>
 
-> **Hotfix-Branch (2026-11-09)** — behebt Bluetooth-Vibration unter Windows 11 23H2, fügt vereinfachtes Chinesisch als Standardsprache hinzu und sorgt dafür, dass der Schließen-Button (und Alt+F4) das Fenster in den Infobereich minimiert statt das Programm zu beenden. Siehe [RELEASE_NOTES.md](RELEASE_NOTES.md) und [README.zh-CN.md](README.zh-CN.md).
+> **StadiaLink Rev 1.0.0** — ein unabhängiges Konfigurationstool für den Stadia-Controller unter Windows 11 x64. Es stellt Bluetooth-Vibration auf Build 22631 wieder her, nutzt standardmäßig vereinfachtes Chinesisch, hält die App beim Schließen im Infobereich und prüft private GATT-Schnittstellen auf nicht verifizierten Windows-Builds. Siehe [RELEASE_NOTES.md](RELEASE_NOTES.md) und [docs/CHANGES.md](docs/CHANGES.md).
 >
-> **Eigenständige Versionslinie (2026-11-11)** — dieser Fork hat Version 2.0.0, getrennt von der 1.x-Linie des Originals. Updates werden nur in diesem Repository geprüft; Upstream-Versionen lösen keine Benachrichtigung aus.
+> **Eigenständige Versionslinie** — `1.0.0` ist die erste Version dieses Projekts. Updates werden ausschließlich aus stabilen Releases dieses Repositories geprüft; kein externes Projekt kann eine Benachrichtigung auslösen.
 
 ---
 
@@ -26,7 +26,7 @@
 
 ## 🚀 Installation
 
-Lade `StadiaLink.Setup.exe` unter [Releases](https://github.com/szninjacat/StadiaLink-Win11-Fix/releases/latest) herunter, starte das Installationsprogramm und bestätige die Administratorabfrage für den Treiber. Verbinde den Controller über USB oder kopple ihn in den Windows-Bluetooth-Einstellungen und schalte ihn ein. StadiaLink erkennt den verfügbaren Controller.
+Lade `StadiaLink.Setup.exe` unter [Releases](https://github.com/szninjacat/StadiaLink-Rev/releases/latest) herunter, starte das Installationsprogramm und bestätige die Administratorabfrage für den Treiber. Verbinde den Controller über USB oder kopple ihn in den Windows-Bluetooth-Einstellungen und schalte ihn ein. StadiaLink erkennt den verfügbaren Controller.
 
 Bluetooth setzt die Bluetooth-Firmware des Controllers voraus. StadiaLink verändert keine Firmware. Das Installationsprogramm enthält die Komponenten und den zugehörigen Quellcode und funktioniert offline. Es nutzt .NET Framework 4.8 und Windows-Komponenten; zusätzliche Controller-Emulatoren oder Laufzeitumgebungen von Drittanbietern sind nicht erforderlich.
 
@@ -49,8 +49,8 @@ Get-FileHash .\StadiaLink.Setup.exe -Algorithm SHA256
 Öffne Windows PowerShell in einem Arbeitsordner. Das Kompilieren braucht keine Administratorrechte; die Treiberinstallation dagegen schon.
 
 ```powershell
-git clone https://github.com/szninjacat/StadiaLink-Win11-Fix.git
-cd StadiaLink-Win11-Fix
+git clone https://github.com/szninjacat/StadiaLink-Rev.git
+cd StadiaLink-Rev
 
 # Falls Skripte blockiert sind, nur für diese Sitzung.
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
@@ -107,7 +107,7 @@ Es ist keine Firmware-Aktivierung und kein zusätzliches Programm erforderlich. 
 
 ## 💬 Probleme, Beiträge und Deinstallation
 
-Öffne ein [Issue](https://github.com/szninjacat/StadiaLink-Win11-Fix/issues) mit Windows-Version, App-Version, Verbindungstyp und Schritten zur Reproduktion. Das Installationsprotokoll liegt unter `%LOCALAPPDATA%\StadiaStudio\logs\driver-install.log`; entferne persönliche Informationen vor dem Teilen.
+Öffne ein [Issue](https://github.com/szninjacat/StadiaLink-Rev/issues) mit Windows-Version, App-Version, Verbindungstyp und Schritten zur Reproduktion. Das Installationsprotokoll liegt unter `%LOCALAPPDATA%\StadiaStudio\logs\driver-install.log`; entferne persönliche Informationen vor dem Teilen.
 
 Pull Requests sind willkommen. Beschreibe die Prüfungen und führe bei Änderungen an Konfiguration oder Eingabeübersetzung `tests/run.ps1` aus. Lade keine heruntergeladenen Abhängigkeiten, erzeugten Binärdateien, persönlichen Profile oder Firmware-Forschungsmaterialien hoch.
 
@@ -127,7 +127,7 @@ Bluetooth-Vibration nutzt private Windows-Schnittstellen, auf realen Systemen ve
 
 Vollständiges Original-Repository: **https://github.com/aisk/WinStadia**.
 
-Ausgangsstand: [Commit e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.com/aisk/WinStadia/commit/e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a). Copyright-Hinweise bleiben erhalten. StadiaLink und seine Änderungen stehen unter **GPL-3.0**; siehe [LICENSE](LICENSE) und [UPSTREAM-README.md](UPSTREAM-README.md). Unabhängiges Projekt ohne Verbindung zu Google oder Microsoft.
+Ausgangsstand: [Commit e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.com/aisk/WinStadia/commit/e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a). Copyright-Hinweise bleiben erhalten. StadiaLink und seine Änderungen stehen unter **GPL-3.0**; siehe [LICENSE](LICENSE) und [CREDITS.md](CREDITS.md). Unabhängiges Projekt ohne Verbindung zu Google oder Microsoft.
 
 ## ✨ Entwicklung mit ChatGPT / Codex
 

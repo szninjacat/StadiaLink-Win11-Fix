@@ -31,6 +31,6 @@ Desktop.ini
 *.pfx
 *.cat
 
-# NOTE: dist/ is intentionally tracked. It holds the prebuilt binaries
-# distributed with this hotfix branch; see RELEASE_NOTES.md. Do not add
+# NOTE: dist/ is intentionally tracked. It holds the prebuilt release
+# binaries documented in RELEASE_NOTES.md. Do not add
 # *.exe / *.dll / *.ico ignore rules here or those files will disappear.
